@@ -230,11 +230,12 @@ function parseText(raw) {
       // Intentar extraer cantidad de la misma linea
       // Formato: "5927889. 50pz" | "5927889 - 200" | "5919070 100pz"
       const afterCode = l.slice(l.indexOf(code) + 7);
+      // 1) Numero inmediato: "5912209. 100pz" | "5912209 - 50"
       const mInline = afterCode.match(/^\s*[.\-:,]?\s*(\d{1,4})\s*(pz|pzs|piezas?|pcs?|und?)?/i);
-      if (mInline && mInline[1]) {
-        addItem(code, +mInline[1]);
-        continue;
-      }
+      if (mInline && mInline[1]) { addItem(code, +mInline[1]); continue; }
+      // 2) Numero al final de la linea (con texto en medio): "5900239 sin existencias 100" | "5915715 falta 27 piezas"
+      const mLast = afterCode.match(/.*\b(\d{1,4})\s*(pz|pzs|piezas?|pcs?|und?)?\s*$/i);
+      if (mLast && mLast[1]) { addItem(code, +mLast[1]); continue; }
 
       // Sin cantidad en la misma linea → buscar en linea siguiente
       let foundQty = false;
