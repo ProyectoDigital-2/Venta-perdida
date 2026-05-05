@@ -6,6 +6,8 @@
 <title>Ventas Perdidas — APYMSA</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
   :root {
     --bg:#e8e8e8;--surface:#ffffff;--surface2:#f2f2f2;--border:#d8d8d8;--border2:#c4c4c4;
@@ -84,7 +86,7 @@
         <h1><strong>Ventas</strong> <span>Perdidas</span></h1>
         <p class="subtitle">Control de faltantes y registro diario de existencias</p>
       </div>
-      <div class="badge"><span class="dot"></span> activo</div>
+      <div class="badge" id="conn-badge"><span class="dot" id="conn-dot"></span> <span id="conn-label">Conectando...</span></div>
     </div>
   </header>
 
@@ -148,8 +150,46 @@
 
 </div>
 <script>
-let records = JSON.parse(localStorage.getItem('vp_records') || '[]');
+// ── Firebase config ────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBUFvPsFQbvg_OTNEwcg7PSYkyPUwYfUgI",
+  authDomain: "apymsa-ventas-perdidas.firebaseapp.com",
+  databaseURL: "https://apymsa-ventas-perdidas-default-rtdb.firebaseio.com",
+  projectId: "apymsa-ventas-perdidas",
+  storageBucket: "apymsa-ventas-perdidas.firebasestorage.app",
+  messagingSenderId: "17591126900",
+  appId: "1:17591126900:web:b640e1ba39e9a5dfe4fa21"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const refRegistros = db.ref('registros');
+
+// Monitor conexion Firebase
+const connRef = db.ref('.info/connected');
+connRef.on('value', snap => {
+  const online = snap.val();
+  const dot = document.getElementById('conn-dot');
+  const label = document.getElementById('conn-label');
+  if (dot && label) {
+    dot.style.background = online ? 'var(--accent)' : 'var(--danger)';
+    label.textContent = online ? 'En línea' : 'Sin conexión';
+  }
+});
+
+let records = [];
 let currentOrigen = '';
+
+// Escuchar cambios en tiempo real desde Firebase
+refRegistros.on('value', snapshot => {
+  const data = snapshot.val();
+  if (data) {
+    records = Object.entries(data).map(([id, r]) => ({ ...r, id }));
+    records.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  } else {
+    records = [];
+  }
+  renderTable();
+});
 
 // ── Parser local ────────────────────────────────────────────
 // Codigo: exactamente 7 digitos (puede empezar con 0)
@@ -217,7 +257,9 @@ function parseText(raw) {
 
 
 // ── Persistencia ──────────────────────────────────────────────────────────────
-function save() { localStorage.setItem('vp_records', JSON.stringify(records)); }
+function save() {
+  // Firebase es la fuente de verdad — no se usa localStorage
+}
 
 // ── Render tabla ──────────────────────────────────────────────────────────────
 function renderTable() {
@@ -239,7 +281,9 @@ function renderTable() {
   </tr>`).join('');
 }
 
-function del(id) { records = records.filter(r=>r.id!==id); save(); renderTable(); }
+function del(id) {
+  refRegistros.child(id).remove();
+}
 
 function clearAll2() {
   document.getElementById('msg-input').value = '';
@@ -249,7 +293,7 @@ function clearAll() {
   const pwd = prompt('Ingresa la contraseña para borrar todos los registros:');
   if (pwd === null) return;
   if (pwd !== 'apymsa2026') return showStatus('Contraseña incorrecta', true);
-  records=[]; save(); renderTable(); showStatus('Registros borrados',false);
+  refRegistros.remove().then(() => showStatus('Registros borrados', false));
 }
 
 function showStatus(msg, err) {
@@ -270,13 +314,17 @@ function setLoading(on, label) {
 // ── Merge: suma cantidad si el codigo ya existe el mismo dia ──────────────────
 function mergeRecord(code, qty, fecha, hora, origen) {
   const src = origen || currentOrigen || '';
+  // Buscar si ya existe el mismo codigo en el mismo dia
   const existing = records.find(r => r.code === code && r.fecha === fecha);
   if (existing) {
-    existing.qty += qty;
-    existing.hora = hora;
-    if (src && !existing.origen.includes(src)) existing.origen += (existing.origen ? ', ' : '') + src;
+    const updatedQty = existing.qty + qty;
+    const updatedOrigen = (src && !existing.origen.includes(src))
+      ? (existing.origen ? existing.origen + ', ' + src : src)
+      : existing.origen;
+    refRegistros.child(existing.id).update({ qty: updatedQty, hora, origen: updatedOrigen });
   } else {
-    records.unshift({ id: String(Date.now()+Math.random()), fecha, hora, code, qty, origen: src });
+    const ts = Date.now();
+    refRegistros.push({ fecha, hora, code, qty, origen: src, ts });
   }
 }
 
@@ -292,7 +340,6 @@ function addManual() {
   }
   const now = new Date();
   mergeRecord(code, qty, now.toLocaleDateString('es-MX'), now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}), currentOrigen);
-  save(); renderTable();
   showStatus(`${code} — ${qty} pz agregado`, false);
   codeEl.value = ''; qtyEl.value = '';
   codeEl.focus();
@@ -316,7 +363,6 @@ async function extractAndAdd() {
     mergeRecord(String(code), +qty, fecha, hora, currentOrigen);
   });
 
-  save(); renderTable();
   showStatus(`${items.length} código${items.length!==1?'s':''} procesado${items.length!==1?'s':''}`, false);
   document.getElementById('msg-input').value = '';
 }
@@ -366,7 +412,7 @@ function exportExcel() {
   showStatus('Excel descargado — 2 hojas', false);
 }
 
-renderTable();
+// renderTable se llama automaticamente cuando Firebase envía datos
 </script>
 </body>
 </html>
