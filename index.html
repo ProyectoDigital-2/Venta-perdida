@@ -324,18 +324,9 @@ function setLoading(on, label) {
 function mergeRecord(code, qty, fecha, hora, origen, empleado) {
   const src = origen || currentOrigen || '';
   const emp = empleado || '';
-  // Buscar si ya existe el mismo codigo, mismo dia y mismo empleado
-  const existing = records.find(r => r.code === code && r.fecha === fecha && r.empleado === emp);
-  if (existing) {
-    const updatedQty = existing.qty + qty;
-    const updatedOrigen = (src && !(existing.origen||'').includes(src))
-      ? (existing.origen ? existing.origen + ', ' + src : src)
-      : (existing.origen||'');
-    refRegistros.child(existing.id).update({ qty: updatedQty, hora, origen: updatedOrigen });
-  } else {
-    const ts = Date.now();
-    refRegistros.push({ fecha, hora, code, qty, origen: src, empleado: emp, ts });
-  }
+  // Siempre insertar nuevo registro — sin suma
+  const ts = Date.now();
+  refRegistros.push({ fecha, hora, code, qty, origen: src, empleado: emp, ts });
 }
 
 function addManual() {
