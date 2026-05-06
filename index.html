@@ -391,7 +391,6 @@ function exportExcel() {
 
   const wb = XLSX.utils.book_new();
 
-  // Hoja 1: Detalle completo
   const detail = records.map((r,i) => ({
     'No.': i+1,
     'No. Empleado': r.empleado || '',
@@ -403,29 +402,10 @@ function exportExcel() {
   }));
   const ws1 = XLSX.utils.json_to_sheet(detail);
   ws1['!cols'] = [{wch:5},{wch:14},{wch:12},{wch:8},{wch:12},{wch:13},{wch:35}];
-  XLSX.utils.book_append_sheet(wb, ws1, 'Detalle');
-
-  // Hoja 2: Consolidado por código (suma de cantidades)
-  const map = {};
-  records.forEach(r => {
-    if (!map[r.code]) map[r.code] = { qty: 0, origenes: new Set() };
-    map[r.code].qty += r.qty;
-    if (r.origen) r.origen.split(', ').forEach(o => map[r.code].origenes.add(o));
-  });
-  const consolidated = Object.entries(map)
-    .sort((a,b) => b[1].qty - a[1].qty)
-    .map(([code, v], i) => ({
-      'No.': i+1,
-      'Código': code,
-      'Total piezas': v.qty,
-      'Origen(es)': [...v.origenes].join(', ')
-    }));
-  const ws2 = XLSX.utils.json_to_sheet(consolidated);
-  ws2['!cols'] = [{wch:5},{wch:12},{wch:14},{wch:40}];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Consolidado');
+  XLSX.utils.book_append_sheet(wb, ws1, 'Ventas Perdidas');
 
   XLSX.writeFile(wb, `ventas_perdidas_${new Date().toLocaleDateString('es-MX').replace(/\//g,'-')}.xlsx`);
-  showStatus('Excel descargado — 2 hojas', false);
+  showStatus('Excel descargado', false);
 }
 
 // renderTable se llama automaticamente cuando Firebase envía datos
