@@ -101,13 +101,17 @@
     <!-- Manual rápido -->
     <div class="input-label">Captura manual</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="manual-emp" placeholder="No. Empleado"
+        style="width:130px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+        onkeydown="if(event.key==='Enter'){document.getElementById('manual-code').focus()}">
       <input type="text" id="manual-code" placeholder="Código (7 dígitos)"
         maxlength="7" inputmode="numeric"
-        style="width:160px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
+        style="width:150px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
         onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
         onkeydown="if(event.key==='Enter'){document.getElementById('manual-qty').focus()}">
       <input type="number" id="manual-qty" placeholder="Cant." min="1"
-        style="width:90px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
+        style="width:80px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
         onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
         onkeydown="if(event.key==='Enter'){addManual()}">
       <button class="btn-primary" onclick="addManual()">Agregar</button>
@@ -117,6 +121,9 @@
 
     <!-- Texto libre -->
     <div class="input-label">Pegar texto libre</div>
+    <input type="text" id="extract-emp" placeholder="No. Empleado"
+      style="width:160px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;margin-bottom:8px;"
+      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
     <textarea id="msg-input" placeholder="5927889. 50pz&#10;5900239. 200pz&#10;Venta perdida por falta de existencia."></textarea>
     <div class="hint">
       Formatos: <code>5912209. 100pz</code> &nbsp; <code>5912209 - 50</code> &nbsp; <code>5912209</code> (→ 1 pz)
@@ -140,7 +147,7 @@
       </div>
     </div>
     <table>
-      <thead><tr><th>#</th><th>Fecha</th><th>Hora</th><th>Código</th><th>Cantidad</th><th>Origen</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>No. Empleado</th><th>Fecha</th><th>Hora</th><th>Código</th><th>Cantidad</th><th>Origen</th><th></th></tr></thead>
       <tbody id="tbody"></tbody>
     </table>
     <div id="empty-state" class="empty-state">
@@ -273,11 +280,12 @@ function renderTable() {
   empty.style.display = 'none';
   tbody.innerHTML = records.map((r,i) => `<tr>
     <td class="row-num">${records.length-i}</td>
+    <td style="font-family:var(--mono);font-size:12px;font-weight:500;">${r.empleado||'—'}</td>
     <td class="date-cell">${r.fecha}</td>
     <td class="date-cell">${r.hora}</td>
     <td class="code-cell">${r.code}</td>
     <td class="qty-cell">${r.qty.toLocaleString('es-MX')} pz</td>
-    <td style="font-size:12px;color:var(--muted2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.origen||''}">${r.origen||'—'}</td>
+    <td style="font-size:12px;color:var(--muted2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.origen||''}">${r.origen||'—'}</td>
     <td><button class="del-btn" onclick="del('${r.id}')">×</button></td>
   </tr>`).join('');
 }
@@ -313,41 +321,56 @@ function setLoading(on, label) {
 }
 
 // ── Merge: suma cantidad si el codigo ya existe el mismo dia ──────────────────
-function mergeRecord(code, qty, fecha, hora, origen) {
+function mergeRecord(code, qty, fecha, hora, origen, empleado) {
   const src = origen || currentOrigen || '';
-  // Buscar si ya existe el mismo codigo en el mismo dia
-  const existing = records.find(r => r.code === code && r.fecha === fecha);
+  const emp = empleado || '';
+  // Buscar si ya existe el mismo codigo, mismo dia y mismo empleado
+  const existing = records.find(r => r.code === code && r.fecha === fecha && r.empleado === emp);
   if (existing) {
     const updatedQty = existing.qty + qty;
-    const updatedOrigen = (src && !existing.origen.includes(src))
+    const updatedOrigen = (src && !(existing.origen||'').includes(src))
       ? (existing.origen ? existing.origen + ', ' + src : src)
-      : existing.origen;
+      : (existing.origen||'');
     refRegistros.child(existing.id).update({ qty: updatedQty, hora, origen: updatedOrigen });
   } else {
     const ts = Date.now();
-    refRegistros.push({ fecha, hora, code, qty, origen: src, ts });
+    refRegistros.push({ fecha, hora, code, qty, origen: src, empleado: emp, ts });
   }
 }
 
 function addManual() {
+  const empEl  = document.getElementById('manual-emp');
   const codeEl = document.getElementById('manual-code');
   const qtyEl  = document.getElementById('manual-qty');
+  const empleado = empEl.value.trim();
   const code = codeEl.value.trim();
   const qty  = parseInt(qtyEl.value) || 1;
+  if (!empleado) {
+    empEl.style.borderColor = 'var(--danger)';
+    setTimeout(() => empEl.style.borderColor = 'var(--border)', 1500);
+    return showStatus('Ingresa el número de empleado', true);
+  }
   if (!/^\d{7}$/.test(code)) {
     codeEl.style.borderColor = 'var(--danger)';
     setTimeout(() => codeEl.style.borderColor = 'var(--border)', 1500);
     return showStatus('Código debe tener exactamente 7 dígitos', true);
   }
   const now = new Date();
-  mergeRecord(code, qty, now.toLocaleDateString('es-MX'), now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}), currentOrigen);
+  mergeRecord(code, qty, now.toLocaleDateString('es-MX'), now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}), currentOrigen, empleado);
   showStatus(`${code} — ${qty} pz agregado`, false);
   codeEl.value = ''; qtyEl.value = '';
   codeEl.focus();
 }
 
 async function extractAndAdd() {
+  const empEl = document.getElementById('extract-emp');
+  const empleado = empEl.value.trim();
   const text = document.getElementById('msg-input').value.trim();
+  if (!empleado) {
+    empEl.style.borderColor = 'var(--danger)';
+    setTimeout(() => empEl.style.borderColor = 'var(--border)', 1500);
+    return showStatus('Ingresa el número de empleado', true);
+  }
   if (!text) return showStatus('Pega un mensaje de texto', true);
 
   const now = new Date();
@@ -361,7 +384,7 @@ async function extractAndAdd() {
   if (!items.length) return showStatus('No se encontraron códigos. Revisa el formato.', true);
 
   items.forEach(({code, qty}) => {
-    mergeRecord(String(code), +qty, fecha, hora, currentOrigen);
+    mergeRecord(String(code), +qty, fecha, hora, currentOrigen, empleado);
   });
 
   showStatus(`${items.length} código${items.length!==1?'s':''} procesado${items.length!==1?'s':''}`, false);
@@ -380,6 +403,7 @@ function exportExcel() {
   // Hoja 1: Detalle completo
   const detail = records.map((r,i) => ({
     'No.': i+1,
+    'No. Empleado': r.empleado || '',
     'Fecha': r.fecha,
     'Hora': r.hora,
     'Código': r.code,
@@ -387,7 +411,7 @@ function exportExcel() {
     'Origen': r.origen || ''
   }));
   const ws1 = XLSX.utils.json_to_sheet(detail);
-  ws1['!cols'] = [{wch:5},{wch:12},{wch:8},{wch:12},{wch:13},{wch:35}];
+  ws1['!cols'] = [{wch:5},{wch:14},{wch:12},{wch:8},{wch:12},{wch:13},{wch:35}];
   XLSX.utils.book_append_sheet(wb, ws1, 'Detalle');
 
   // Hoja 2: Consolidado por código (suma de cantidades)
