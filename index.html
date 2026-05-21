@@ -3,108 +3,233 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard — Ventas Perdidas APYMSA</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>Ventas Perdidas — APYMSA</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
-  :root{--bg:#e8e8e8;--surface:#fff;--surface2:#f2f2f2;--border:#d8d8d8;--border2:#c4c4c4;--accent:#16a34a;--text:#111;--muted:#6b7280;--mono:'IBM Plex Mono',monospace;--display:'Inter',sans-serif}
+  :root{--bg:#e8e8e8;--surface:#fff;--surface2:#f2f2f2;--border:#d8d8d8;--border2:#c4c4c4;--accent:#16a34a;--accent2:#15803d;--text:#111;--muted:#9ca3af;--muted2:#6b7280;--danger:#dc2626;--mono:"IBM Plex Mono",monospace;--display:"Inter",sans-serif}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:var(--display);min-height:100vh}
-  .app{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 4rem}
-  header{margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem}
-  .logo{font-size:11px;font-weight:500;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:.5rem;font-family:var(--mono)}
-  h1{font-size:28px;font-weight:300;letter-spacing:-.02em}
-  h1 strong{font-weight:600;color:var(--accent)}
-  .badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);padding:5px 10px;border-radius:6px;border:1px solid var(--border2);color:var(--muted)}
+  body{background:var(--bg);color:var(--text);font-family:var(--display);min-height:100vh;overflow-x:hidden}
+  .app{max-width:900px;margin:0 auto;padding:3rem 2rem 5rem}
+  header{margin-bottom:3rem;padding-bottom:2rem;border-bottom:1px solid var(--border)}
+  .header-top{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem}
+  .logo{font-size:11px;font-weight:500;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:1.5rem;font-family:var(--mono)}
+  h1{font-size:clamp(24px,4vw,36px);font-weight:300;line-height:1.1;letter-spacing:-.02em}
+  h1 strong{font-weight:600}
+  h1 span{color:var(--accent);font-weight:600}
+  .subtitle{font-size:12px;color:var(--muted);margin-top:.35rem}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);padding:5px 10px;border-radius:4px;border:1px solid var(--border2);color:var(--muted2);background:var(--surface)}
   .dot{width:5px;height:5px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:2rem}
+  .stat{background:var(--surface);padding:1.25rem 1.5rem}
+  .stat-label{font-size:11px;font-weight:400;color:var(--muted);margin-bottom:4px}
+  .stat-value{font-size:26px;font-weight:600;color:var(--text);line-height:1}
+
+  /* Input card */
+  .input-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.75rem;margin-bottom:1rem}
+  .input-label{font-size:12px;font-weight:500;color:var(--text);margin-bottom:8px;margin-top:20px}
+  textarea{width:100%;min-height:100px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.7;padding:10px 12px;resize:vertical;transition:border-color .2s;outline:none}
+  textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,163,74,.08)}
+  textarea::placeholder{color:var(--muted)}
+  .hint{font-size:12px;color:var(--muted);font-family:var(--mono);margin-top:6px;line-height:1.8}
+  .hint code{color:var(--muted2);background:var(--surface2);padding:1px 5px;border-radius:4px}
+  .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  button{font-family:var(--display);font-weight:500;font-size:13px;border-radius:6px;padding:9px 18px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);transition:all .15s}
+  button:hover{background:var(--surface2);border-color:var(--border2)}
+  button:active{transform:scale(.98)}
+  .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn-primary:hover{background:var(--accent2);border-color:var(--accent2);color:#fff}
+  .btn-export{border-color:var(--accent);color:var(--accent)}
+  .btn-export:hover{background:rgba(22,163,74,.06)}
+  .btn-clear{border-color:var(--danger);color:var(--danger)}
+  .btn-clear:hover{background:rgba(255,71,71,.08)}
+  .status-msg{font-size:12px;font-family:var(--mono);padding:5px 12px;border-radius:20px;font-weight:500;margin-left:auto}
+  .status-ok{background:rgba(22,163,74,.08);color:var(--accent)}
+  .status-err{background:rgba(255,71,71,.12);color:var(--danger)}
+
+  /* Table */
+  .table-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:3rem}
+  .table-header{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border)}
+  .table-title{font-size:13px;font-weight:500;color:var(--text)}
+  .table-actions{display:flex;gap:8px}
+  table{width:100%;border-collapse:collapse}
+  th{background:var(--bg);font-size:11px;font-weight:500;color:var(--muted);padding:10px 16px;text-align:left;border-bottom:1px solid var(--border)}
+  td{padding:11px 16px;font-size:13px;border-bottom:1px solid var(--border)}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:var(--bg)}
+  .code-cell{font-family:var(--mono);font-weight:500}
+  .qty-cell{font-family:var(--mono);font-weight:500}
+  .date-cell{font-family:var(--mono);font-size:12px;color:var(--muted2)}
+  .row-num{font-size:12px;color:var(--muted)}
+  .del-btn{background:none;border:none;color:var(--muted);font-size:18px;padding:0;cursor:pointer;line-height:1;transition:color .15s}
+  .del-btn:hover{color:var(--danger);background:none;transform:none}
+  .empty-state{text-align:center;padding:3rem 1rem}
+  .empty-text{font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.2);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .divider{height:1px;background:var(--border);margin:20px 0}
+
+  /* Dashboard */
+  .dash-section{border-top:2px solid var(--border2);padding-top:2.5rem;margin-top:1rem}
+  .dash-title-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem}
+  .dash-h2{font-size:20px;font-weight:300;letter-spacing:-.01em}
+  .dash-h2 strong{font-weight:600;color:var(--accent)}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem}
   .filters label{font-size:12px;color:var(--muted);font-weight:500}
   select{padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--display);background:var(--surface);color:var(--text);outline:none;cursor:pointer}
   select:focus{border-color:var(--accent)}
   .btn-reset{padding:7px 14px;border:1px solid var(--border2);border-radius:6px;font-size:12px;background:transparent;color:var(--muted);cursor:pointer;font-family:var(--display)}
   .btn-reset:hover{background:var(--surface2)}
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.5rem}
-  .stat{background:var(--surface);padding:1.1rem 1.25rem}
-  .stat-label{font-size:11px;color:var(--muted);margin-bottom:4px}
-  .stat-value{font-size:24px;font-weight:600;color:var(--text)}
-  .stat-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .dash-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.5rem}
+  .dash-stat{background:var(--surface);padding:1rem 1.25rem}
+  .dash-stat-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .dash-stat-value{font-size:22px;font-weight:600;color:var(--text)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem}
-  .card-title{font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+  .card-title{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
   .chart-wrap{position:relative;width:100%}
-  .loading{text-align:center;padding:3rem;color:var(--muted);font-size:13px;font-family:var(--mono)}
   .top-list{display:flex;flex-direction:column;gap:8px}
-  .top-item{display:flex;align-items:center;gap:10px;font-size:13px}
+  .top-item{display:flex;align-items:center;gap:8px;font-size:13px}
   .top-rank{font-size:11px;color:var(--muted);min-width:18px;text-align:right;font-family:var(--mono)}
   .top-bar-wrap{flex:1;background:var(--surface2);border-radius:4px;height:6px;overflow:hidden}
-  .top-bar{height:100%;background:var(--accent);border-radius:4px;transition:width .5s}
-  .top-name{font-size:12px;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
-  .top-val{font-size:12px;font-weight:500;color:var(--text);min-width:40px;text-align:right;font-family:var(--mono)}
-  @media(max-width:700px){.grid2,.grid3{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+  .top-bar{height:100%;background:var(--accent);border-radius:4px}
+  .top-name{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+  .top-val{font-size:12px;font-weight:500;min-width:36px;text-align:right;font-family:var(--mono)}
+  @media(max-width:600px){.grid2{grid-template-columns:1fr}.dash-stats{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
 <div class="app">
+
+  <!-- ═══ HEADER ═══ -->
   <header>
-    <div>
-      <div class="logo">APYMSA · Sistema interno</div>
-      <h1><strong>Dashboard</strong> Ventas Perdidas</h1>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <div class="badge"><span class="dot"></span> <span id="conn-label">Conectando...</span></div>
-      <a href="index.html" style="font-size:12px;color:var(--accent);text-decoration:none;border:1px solid var(--border);padding:6px 12px;border-radius:6px;">← Registrar</a>
+    <div class="logo">APYMSA · Sistema interno</div>
+    <div class="header-top">
+      <div>
+        <h1><strong>Ventas</strong> <span>Negadas</span></h1>
+        <p class="subtitle">Control de faltantes y registro diario de existencias</p>
+      </div>
+      <div class="badge" id="conn-badge"><span class="dot" id="conn-dot"></span> <span id="conn-label">Conectando...</span></div>
     </div>
   </header>
 
-  <!-- Filtros -->
-  <div class="filters">
-    <label>Filtrar por:</label>
-
-
-    <select id="f-fecha" onchange="applyFilters()">
-      <option value="">Todas las fechas</option>
-    </select>
-    <button class="btn-reset" onclick="resetFilters()">Limpiar filtros</button>
-  </div>
-
-  <!-- Stats -->
+  <!-- ═══ STATS REGISTRO ═══ -->
   <div class="stats">
-    <div class="stat"><div class="stat-label">Registros totales</div><div class="stat-value" id="s-total">—</div></div>
-    <div class="stat"><div class="stat-label">Piezas perdidas</div><div class="stat-value" id="s-pzas">—</div></div>
-    <div class="stat"><div class="stat-label">Productos únicos</div><div class="stat-value" id="s-prods">—</div></div>
-    <div class="stat"><div class="stat-label">Colaboradores activos</div><div class="stat-value" id="s-emps">—</div></div>
+    <div class="stat"><div class="stat-label">Registros</div><div class="stat-value" id="stat-total">0</div></div>
+    <div class="stat"><div class="stat-label">Piezas negadas</div><div class="stat-value" id="stat-pzas">0</div></div>
+    <div class="stat"><div class="stat-label">Productos únicos</div><div class="stat-value" id="stat-unique">0</div></div>
   </div>
 
-  <!-- Fila 1: Top colaboradores -->
-  <div class="card" style="margin-bottom:1rem">
-    <div class="card-title">Top colaboradores por registros</div>
-    <div class="top-list" id="top-colab"></div>
+  <!-- ═══ FORMULARIO ═══ -->
+  <div class="input-card">
+    <div class="input-label">Captura manual</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="manual-emp" placeholder="No. Empleado"
+        style="width:130px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+        onkeydown="if(event.key==='Enter'){document.getElementById('manual-code').focus()}">
+      <input type="text" id="manual-code" placeholder="Código (7 dígitos)" maxlength="7" inputmode="numeric"
+        style="width:150px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+        onkeydown="if(event.key==='Enter'){document.getElementById('manual-qty').focus()}">
+      <input type="number" id="manual-qty" placeholder="Cant." min="1"
+        style="width:80px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+        onkeydown="if(event.key==='Enter'){addManual()}">
+      <button class="btn-primary" onclick="addManual()">Agregar</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="input-label">Pegar texto libre</div>
+    <input type="text" id="extract-emp" placeholder="No. Empleado"
+      style="width:160px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;margin-bottom:8px;"
+      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+    <textarea id="msg-input" placeholder="5927889. 50pz&#10;5900239. 200pz&#10;Venta negada por falta de existencia."></textarea>
+    <div class="hint">Formatos: <code>5912209. 100pz</code> &nbsp; <code>5912209 - 50</code> &nbsp; <code>5912209</code> (→ 1 pz)</div>
+
+    <div class="actions" style="margin-top:14px;">
+      <button class="btn-primary" id="parse-btn" onclick="extractAndAdd()"><span id="btn-text">Extraer registros</span></button>
+      <button onclick="clearAll2()">Limpiar</button>
+      <span id="status-msg" style="display:none"></span>
+    </div>
   </div>
 
-  <!-- Fila 2: Top sucursales + Tendencia por fecha -->
-  <div class="grid2">
-    <div class="card">
+  <!-- ═══ TABLA ═══ -->
+  <div class="table-card">
+    <div class="table-header">
+      <span class="table-title">Registros guardados</span>
+      <div class="table-actions">
+        <button class="btn-export" onclick="exportExcel()">Exportar Excel</button>
+        <button class="btn-clear" onclick="clearAll()">Borrar todo</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>No. Empleado</th><th>Fecha</th><th>Hora</th><th>Código</th><th>Cantidad</th><th>Origen</th><th></th></tr></thead>
+      <tbody id="tbody"></tbody>
+      <tbody>
+        <tr id="ver-mas-row" style="display:none">
+          <td colspan="8" style="text-align:center;padding:14px;">
+            <button onclick="verMas()" style="border:1px solid var(--border2);background:var(--surface2);color:var(--text);border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:var(--display);font-weight:500;"><span>Ver más</span></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="empty-state" class="empty-state">
+      <div class="empty-text">Sin registros. Pega un mensaje o captura manualmente.</div>
+    </div>
+  </div>
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <div class="dash-section">
+    <div class="dash-title-row">
+      <div>
+        <h2 class="dash-h2"><strong>Dashboard</strong> — Análisis</h2>
+      </div>
+    </div>
+
+    <div class="filters">
+      <label>Filtrar por:</label>
+      <select id="f-fecha" onchange="applyFilters()"><option value="">Todas las fechas</option></select>
+      <button class="btn-reset" onclick="resetFilters()">Limpiar filtros</button>
+    </div>
+
+    <div class="dash-stats">
+      <div class="dash-stat"><div class="dash-stat-label">Registros</div><div class="dash-stat-value" id="d-total">—</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">Piezas negadas</div><div class="dash-stat-value" id="d-pzas">—</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">Productos únicos</div><div class="dash-stat-value" id="d-prods">—</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">Colaboradores activos</div><div class="dash-stat-value" id="d-emps">—</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Top colaboradores</div>
+        <div class="top-list" id="top-colab"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Registros por fecha</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chart-fecha" role="img" aria-label="Registros por fecha"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
       <div class="card-title">Top sucursales</div>
       <div class="top-list" id="top-suc"></div>
     </div>
+
     <div class="card">
-      <div class="card-title">Registros por fecha</div>
-      <div class="chart-wrap" style="height:220px"><canvas id="chart-fecha" role="img" aria-label="Registros por fecha"></canvas></div>
+      <div class="card-title">Top 15 — productos más negados (piezas)</div>
+      <div class="chart-wrap" style="height:400px"><canvas id="chart-prods" role="img" aria-label="Top productos por piezas negadas"></canvas></div>
     </div>
   </div>
 
-
-  <!-- Fila 4: Top productos -->
-  <div class="card">
-    <div class="card-title">Top 15 — Productos más solicitados</div>
-    <div class="chart-wrap" style="height:400px"><canvas id="chart-prods" role="img" aria-label="Top productos por piezas"></canvas></div>
-  </div>
 </div>
-
 <script>
 const CATALOG = {"35": {"n": "ALEMAN PADILLA MIGUEL ANGEL", "s": "Tesistan", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "38": {"n": "ROMO GUTIERREZ JAIME HUMBERTO", "s": "Irapuato", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "226": {"n": "Velazco Parra Arnulfo", "s": "Pelicano", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "392": {"n": "DANIEL ERNESTO INCHAURREGUI VALDIVIA", "s": "Central camionera", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "427": {"n": "BAUTISTA TIRADO JOAQUIN", "s": "Puebla CAPU (1)", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "517": {"n": "JUAREZ MENDOZA JAIME", "s": "Boca del Rio Ejercito Mexicano", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "614": {"n": "SAAVEDRA GARCIA JOSE ANGEL", "s": "Tepatitlan", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "629": {"n": "Ruiz Casilla David", "s": "Adolf Horn", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "673": {"n": "Saucedo Gaytan Jesus", "s": "Guadalupe", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "809": {"n": "Perez Riera Luis Eduardo", "s": "Pachuca", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "856": {"n": "BELTRAN GAMEZ GREGORIO ADRIAN", "s": "Santa Catarina", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "857": {"n": "MARTINEZ MELLADO JORGE ALBERTO", "s": "Boca del Rio Ejercito Mexicano", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "858": {"n": "BLANCAS GARCIA MARCO ANTONIO", "s": "Ecatepec", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "861": {"n": "MENDOZA ORIGEL EDITH FABIOLA", "s": "León Aldama", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "893": {"n": "Ramos Bojorquez Raymundo", "s": "Pelicano", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "898": {"n": "MENDEZ CORONA GUSTAVO ENRIQUE", "s": "Monterrey Ruiz", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "916": {"n": "Treviño Ruiz Javier Anselmo", "s": "Hermosillo", "t": "Directos Cedis Refaccionarias", "d": "Refaccionarias"}, "961": {"n": "Jose Antonio Solis Lopez", "s": "Toluca", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "1171": {"n": "Beltran Peinado Jesus Ramon", "s": "Culiacán Blvd. Zapata", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "1174": {"n": "Salas Herrera Antonio Cesar", "s": "Pelicano", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "1206": {"n": "Maya Epigmenio Rubén", "s": "Tijuana", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "1233": {"n": "Mendoza Imperial Oswaldo ( promotor de ventas)", "s": "Culiacán Francisco I Madero", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "1279": {"n": "Gonzalez Aldrete Luis Manuel", "s": "Central camionera", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "1290": {"n": "Carlos Antonio Gamon Limon ( Promotor de ventas)", "s": "Chihuahua Canal Colón", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "1359": {"n": "XOCHICALE ORTIZ MARIBEL", "s": "Puebla CAPU (1)", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "1424": {"n": "MORALES SANTILLAN IVAN", "s": "Toluca", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "1493": {"n": "PORRAS DE LA VEGA JORGE ANTONIO", "s": "Chihuahua Canal Colón", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "1495": {"n": "SANTIAGO VAZQUEZ IGNACIO FERNANDO", "s": "Tuxtla Gutierrez", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "1559": {"n": "Ricardo Gonzalez Becerra ( Promotor de ventas)", "s": "Chihuahua Churubusco", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "1622": {"n": "Calderon Barrientos Carlos Cesar", "s": "Tuxtla Gutierrez", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "1651": {"n": "Martinez Vicente Marco Antonio ( promotor de ventas)", "s": "Tuxtla Panamericana", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "1699": {"n": "Leon Molina  Alberto", "s": "Adolf Horn", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "1724": {"n": "BENITEZ GALLARDO JOSE DAVID", "s": "Acapulco", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "1730": {"n": "Medel Palafox David", "s": "Puerto Vallarta", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "1739": {"n": "Tadeo Padilla Carlos", "s": "Tampico 2 Centro", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "1749": {"n": "Jose Cruz Reyes Nevarez ( Promotor de Ventas)", "s": "Tijuana Centro", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "1781": {"n": "Jose luis Castro Marquez", "s": "Chihuahua Canal Colón", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "1786": {"n": "Razo Alvarez Luis", "s": "Pelicano", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "1810": {"n": "BRISEÑO VAZQUEZ OSCAR ALBERTO", "s": "Tepic", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "1826": {"n": "Marcial Gonzalez Jose Antonio", "s": "San Luis", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "1860": {"n": "Jose Hugo Hernadez Cruz", "s": "San Luis", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "1913": {"n": "López Facio Leonardo", "s": "Morelia libramiento", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "1933": {"n": "Arias Garcia Mario Alberto", "s": "Villahermosa", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "1962": {"n": "Jesus Nathanael Ledezma Perez", "s": "Guadalupe", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "1987": {"n": "Martinez Jaramillo Fabian", "s": "Aguascalientes Convención", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "2046": {"n": "AVILA MENDEZ LUIS RAMON", "s": "Ecatepec", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "2063": {"n": "Lopez Jimenez Victor Raul", "s": "Oaxaca", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "2086": {"n": "Camacho Granja Miguel Angel", "s": "San Luis", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "2139": {"n": "Rosales Bernal Miguel Angel", "s": "Puebla Bugambilias", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "2172": {"n": "Alvarez Montes Isaac Israel", "s": "Belisario Dominguez", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "2193": {"n": "MORENO NAVARRO EDUARDO", "s": "León Aldama", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "2211": {"n": "LOPEZ MEDINA MARCO ANTONIO", "s": "Celaya", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "2219": {"n": "BALDERAS GARZA OCTAVIO", "s": "Tampico 2 Centro", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "2254": {"n": "MUÑOZ PEREDO MAURICIO", "s": "Cordoba", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "2259": {"n": "Estrella Eusebio Marco Antonio (Promotor de Ventas)", "s": "Tampico 1 Norte", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "2314": {"n": "Magaña Gutierrez Edwar Guadalupe", "s": "Colon", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "2339": {"n": "Hector Manuel Celaya Gamez ( promotor de ventas)", "s": "Hermosillo", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "2364": {"n": "Garin Lopez Efren", "s": "Manzanillo", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "2373": {"n": "CASTILLO RODRIGUEZ EDGAR EDUARDO", "s": "Guadalupe", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "2408": {"n": "tec Cocom Jorge Vidal", "s": "Merida Canek", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "2444": {"n": "GUTIERREZ PALAFOX LUIS CARLOS", "s": "Mexicali", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "2471": {"n": "RAUL PAULIN RODRIGUEZ ESPINOZA (Motocicleta)", "s": "Central camionera", "t": "TERRITORIAL OCCIDENTE MOTO PARTES", "d": "Moto Partes"}, "2482": {"n": "Pulido Bonifacio Fabiola", "s": "Puebla Bugambilias", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "2492": {"n": "Dominguez Rea Erwin Alan", "s": "Rojo Gómez", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "2519": {"n": "Tellez Salazar Tomas", "s": "Puebla CAPU (1)", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "2524": {"n": "Leon Rojas Josue", "s": "Mexicali", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "2552": {"n": "Barron Sanchez Alejandro", "s": "Neza", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "2571": {"n": "FLORES OLIVARES JAVIER", "s": "San Luis Pedro Moreno", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "2572": {"n": "Sabido Paz Oscar", "s": "Cancun Talleres", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "2603": {"n": "Torres Lopez Hilario", "s": "Ojo de Agua", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "2607": {"n": "Barajas Lopez Wilberth Alejandro", "s": "Morelia libramiento", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "2642": {"n": "Jose Francisco Escamilla Escobedo", "s": "Vallejo", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "2685": {"n": "Almanza Castro Jorge", "s": "Morelia libramiento", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "2724": {"n": "Noriega Dominguez Jairo Hiram", "s": "Hermosillo Periferico", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "2752": {"n": "Castillo Medina Gerardo Javier", "s": "Torreón", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "2814": {"n": "Hernandez ugalde Mario Gabriel", "s": "Veracruz Cuauhtemoc", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "2853": {"n": "Carmona Gomez Edgar Antonio", "s": "Tijuana", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "2855": {"n": "Cortes Armenta Cesar Eduardo", "s": "Ecatepec", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "2904": {"n": "Ramirez Castro Carlos Heriberto", "s": "Belisario Dominguez", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "2923": {"n": "Argenis Joshua Quezada Iñiguez ( Promotor de Ventas )", "s": "Belisario Dominguez", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "2960": {"n": "Gómez Santiago Francisco", "s": "Pachuca", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "3008": {"n": "Gomez Cuellar Luis Arturo", "s": "León Aldama", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "3052": {"n": "Javier Juarez Rodriguez", "s": "Cuernavaca", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "3131": {"n": "Marco Antonio Reyes Bautista (Promotor de ventas)", "s": "Puebla Bugambilias", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "3177": {"n": "Ugalde Loyola Nestor Alonso", "s": "Queretaro Nacion", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "3185": {"n": "Abigail Magali Mascote Quintanar", "s": "Vallejo", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "3201": {"n": "Hernandez Perez Angel de Jesus", "s": "Colima", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "3202": {"n": "Robles Reyna Elizabeth", "s": "Nuevo Laredo", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "3236": {"n": "Cruz Puentes Gustavo", "s": "Durango", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "3249": {"n": "Cerna Decenas Alicia", "s": "Belisario Dominguez", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "3275": {"n": "Castro Castañeda David", "s": "Durango", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "3290": {"n": "Nieva Tellez Emmanuel", "s": "Cuernavaca", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "3299": {"n": "Silva Chavez Osmar Javier", "s": "Morelia Madero", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "3312": {"n": "Miranda Flores Fernando", "s": "Los Mochis", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "3344": {"n": "Mario Francisco Acuña Martinez", "s": "Hermosillo Quiroga", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "3359": {"n": "Lugo Perez luis Alberto", "s": "Culiacán Blvd. Zapata", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "3382": {"n": "Jorge Eliseo Antonio Jimenez Cortez", "s": "Pachuca", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "3391": {"n": "Duarte Sanchez Felipe Genaro de Jesus", "s": "Ciudad Juárez La Raza", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "3399": {"n": "Pedro Martinez Garcia", "s": "Cuernavaca", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "3424": {"n": "Queb Ub Manuel Adonai", "s": "Campeche", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "3450": {"n": "Rodriguez Gonzalez Daniel Angel", "s": "Tampico 2 Centro", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "3468": {"n": "Ortiz Facio Jose Angel", "s": "Ciudad Juárez La Raza", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "3475": {"n": "Ruiz Navarrete Jorge Luis (promotor de ventas)", "s": "Morelia Madero", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "3509": {"n": "Rafael Arturo Rodriguez Noh", "s": "Campeche", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "3518": {"n": "De los Santos Erick", "s": "Acapulco", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "3522": {"n": "ENRIQUE NAVARRO VAZQUEZ", "s": "San Luis", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "3540": {"n": "Francisco Javier Magaña Bautista", "s": "Merida Canek", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "3542": {"n": "Tellez Giron Zenil Juan Osiris", "s": "Pachuca", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "3597": {"n": "Gonzalez Galvan David Felipe", "s": "León Aldama", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "3598": {"n": "Garcia Monroy Jarid Antonio", "s": "Cuernavaca", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "3645": {"n": "JOSE DANIEL ALVAREZ FRANCO", "s": "Tuxtla Gutierrez", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "3649": {"n": "Jibran Hernadez Chavez", "s": "CDMX Cuauhtemoc", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "3651": {"n": "Pasalle Gonzalez Alfonso Emmanuel ( Promotor de ventas)", "s": "Gomez Palacio", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "3685": {"n": "Saavedra Torres Raúl", "s": "Saltillo", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "3702": {"n": "Estrada Lopez Francisco Javier", "s": "Celaya", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "3743": {"n": "Gonzalez Arellano Gerardo Antonio", "s": "Torreón", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "3788": {"n": "Reyes Monjardin Juan de Dios ( promotor de ventas)", "s": "Culiacán Blvd. Zapata", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "3841": {"n": "García Palomares Gerardo", "s": "Ciudad Juárez La Raza", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "3850": {"n": "Escobar Cuevas Eduardo", "s": "La Paz", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "3882": {"n": "Cesar Ruiz Ramos (promotor de ventas)", "s": "Acapulco", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "3899": {"n": "Javier Tapia Quintana", "s": "San Juan del Rio", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "3961": {"n": "Pedro Alexis Quintanar Alvarado ( Promotor de Ventas)", "s": "Tampico 2 Centro", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "3963": {"n": "Zepeda Mendoza Ana Gabriela", "s": "Puerto Vallarta", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "3976": {"n": "Ferruzquia Garcia Jose Javier", "s": "Queretaro Nacion", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "3999": {"n": "Cortez Galindo Carlos", "s": "Aguascalientes Convención", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "4006": {"n": "Juan Carlos Medina Garrido", "s": "Vallejo", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "4016": {"n": "Jose Francisco Lopez Rivera", "s": "Tapachula", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "4054": {"n": "López Guerra Jose Angel", "s": "Tapachula", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "4072": {"n": "Gracia Ovando Ignacio", "s": "Villahermosa", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "4073": {"n": "Pérez Martinez Rubinoy", "s": "Tapachula", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "4109": {"n": "Becerra Zaragoza Rafael Aaron", "s": "Tultitlan", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "4126": {"n": "Baseca Gutirrez Patricio ( Promotor de ventas)", "s": "Obregón Rodolfo Elias Calles", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "4133": {"n": "JOSE EDUARDO CORDOVA ANZUETO ( promotor de ventas)", "s": "Tapachula", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "4136": {"n": "Trejo Pineda Juan de Dios ( promotor de ventas)", "s": "Mazatlán Rafael Buelna", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "4154": {"n": "DANIEL IVAN MARTINEZ MENESES", "s": "Pachuca", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "4168": {"n": "Cristian Lisandro Pech valle ( Promotor de ventas)", "s": "Campeche", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "4204": {"n": "Joselito Ruiz Gonzalez", "s": "Aguascalientes Haciendas", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "4207": {"n": "Bastida Solis Victor Manuel de Jesus", "s": "Ciudad Juarez Torres", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "4212": {"n": "Elmer  Eduardo Morales Solis", "s": "Durango", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "4218": {"n": "Raquel Araceli Buendia Hernandez", "s": "León Aldama", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "4228": {"n": "JUAN MIGUEL LIZAMA PEREZ (Motocicleta)", "s": "Central camionera", "t": "TERRITORIAL OCCIDENTE MOTO PARTES", "d": "Moto Partes"}, "4256": {"n": "Cebrero Vargas Jose Enrique", "s": "Lazaro Cardenas", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "4257": {"n": "Rolando Alcazar Garcia ( Promotor de ventas)", "s": "Lazaro Cardenas", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "4292": {"n": "Rodriguez Gil Juan Luis", "s": "Acapulco Constituyentes", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "4347": {"n": "Renato Armando Jimenez Perez", "s": "Tuxtla Gutierrez", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "4417": {"n": "MOCTEZUMA TRISTAN FELIPE SALVADOR", "s": "Reynosa", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "4433": {"n": "Orueta Sanchez Erick", "s": "Santa Martha", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "4443": {"n": "Pimentel Sanchez Rigoberto", "s": "Rojo Gómez", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "4472": {"n": "Luis Alberto Garcia Morales", "s": "Poza Rica", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "4516": {"n": "Luis Enrique Tellez Lopez", "s": "Pachuca", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "4562": {"n": "Richard Abel Mendez Lopez ( Promotor de ventas)", "s": "Tuxtla Gutierrez", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "4563": {"n": "Espinosa Gordillo José Eduardo", "s": "Coatzacoalcos", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "4630": {"n": "Marcos Antonio Trujillo Beltra", "s": "Manzanillo", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "4639": {"n": "Miguel Alejandro Rivera Lopez", "s": "Tampico 2 Centro", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "4692": {"n": "Castro Carranza Jesus", "s": "Chihuahua Canal Colón", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "4704": {"n": "Melesio Aguliar Martin", "s": "Celaya", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "4710": {"n": "Luis Alberto De la cruz Sanchez", "s": "Tuxtla Gutierrez", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "4730": {"n": "Diosdado Ramiréz Ramon", "s": "Celaya", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "4735": {"n": "Espinoza Alvarado Carlos Daniel ( promotor de ventas)", "s": "Los Mochis", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "4745": {"n": "Zenteno Geneste Oscar Daniel", "s": "Hermosillo", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "4748": {"n": "Miguel Angel Martinez Barajas", "s": "Tesistan", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "4787": {"n": "Kevin Javier Alejandro Gomez", "s": "Cardenas", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "4796": {"n": "Andres Gabriel Medina Sandoval", "s": "Central camionera", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "4808": {"n": "Del Angel Uh Victor Manuel", "s": "Playa del carmen", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "4831": {"n": "Eduardo Segovia Velazquez", "s": "Villahermosa", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "4840": {"n": "Ruben Santos Guzman", "s": "Minatitlan", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "4933": {"n": "Jose Guadalupe Hernandez Lopez", "s": "Tapachula", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "5029": {"n": "Bozquez lazaro Jose manuel (promotor de ventas)", "s": "Minatitlan", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "5073": {"n": "Esparza Regalado María Antonieta", "s": "Fresnillo", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "5174": {"n": "Vidal Ivan Mora Murguia", "s": "Querétaro Luis Pasteur", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "5186": {"n": "SERGIO MANUEL LOPEZ RIVERA", "s": "Mazatlán Rafael Buelna", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "5188": {"n": "Miguel Magaña Cruz", "s": "Chetumal", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "5218": {"n": "Rene Garcia Ruiz", "s": "Oaxaca", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "5288": {"n": "Reyes Gasca Fernando Augusto", "s": "San Juan del Rio", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "5309": {"n": "Daniel Adrian Ramos Ramos (Promotor de Ventas)", "s": "Villahermosa Universidad", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "5368": {"n": "Domingo López José ( Promotor de Ventas)", "s": "Oaxaca", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "5430": {"n": "AGUSTIN ALEJANDRO LOPEZ OSEGUERA", "s": "Cancun Portillo", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "5468": {"n": "Venegas Guerrero Cecilia", "s": "Guadalupe Zacatecas", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "5526": {"n": "CLAUDIO TADEO VENTURA (Motocicleta)", "s": "Veracruz Diaz Miron", "t": "TERRITORIAL GOLFO MOTO PARTES", "d": "Moto Partes"}, "5552": {"n": "Rigoberto Mariscal Hidalgo", "s": "Central camionera", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "5583": {"n": "Valenzuela Barraza Cecilia Monserrta", "s": "Chihuahua Tecnologico", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "5605": {"n": "Mario de Jesus Rodriguez Ramos", "s": "Xalapa", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "5607": {"n": "Jesus Manuel Ramirez Ramirez ( Promotor de Ventas)", "s": "Tesistan", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "5612": {"n": "Manuel antonio Morales Lopez (promotor de ventas)", "s": "Villahermosa", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "5629": {"n": "Castro Espinoza Martin Eusebio", "s": "Guasave", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "5712": {"n": "Nuñez Ortiz Marco Antonio ( Promotor de Ventas)", "s": "San Luis Pedro Moreno", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "5739": {"n": "Marco Antonio Vazquez Aleja", "s": "Tehuacan Puebla", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "5788": {"n": "Servando Jesus Rincon Huerta (Promotor de ventas)", "s": "Nuevo Laredo", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "5802": {"n": "Jhonatan Ramirez Hernandez ( Promotor de ventas)", "s": "CDMX Cuauhtemoc", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "5858": {"n": "JONATHAN FELIPE GONZALEZ SOSA (Promotor de Ventas)", "s": "Merida Itzaes", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "5880": {"n": "Moises Cordova Flores ( Promotor de ventas)", "s": "San Luis", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "5898": {"n": "Jesus Adalberto Reyes Toscano ( Promotor de ventas)", "s": "Cordoba", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "6037": {"n": "JOSUE MISAEL IBARRA MARTINEZ", "s": "Tultitlan", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "6075": {"n": "Cota Meza Ulises ( Promotor de ventas)", "s": "La Paz", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "6134": {"n": "JULIO CESAR BERNAL FABIAN", "s": "Puebla CAPU (1)", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "6150": {"n": "Jorge Ernesto Navarrete Gutierrez ( Promotor de ventas)", "s": "Tultitlan", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "6198": {"n": "Luis Armenta Benitez ( Promotor de ventas)", "s": "Mexicali Lazaro Cardenas", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "6357": {"n": "RAMOS CATAÑEDA SEBASTIAN", "s": "Tijuana", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "6373": {"n": "Gutierrez Sanchez Jorge Alfredo (Motocicleta)", "s": "Tampico 2 Centro", "t": "TERRITORIAL NORTE MOTO PARTES", "d": "Moto Partes"}, "6400": {"n": "Luis Ernesto Solorio Perea", "s": "Tultitlan", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "6534": {"n": "Marco Aaron Ortega Apodaca ( Promotor de Ventas)", "s": "Ciudad Juárez La Raza", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "6550": {"n": "JORGE LUIS RAMIREZ GOMEZ", "s": "León Aldama", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "6590": {"n": "DANIA NAYELI VELAZQUEZ CAMPOS", "s": "Puerto Vallarta", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "6636": {"n": "Bernabe Sanchez Santos ( Promotor de Ventas)", "s": "Querétaro Luis Pasteur", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "6665": {"n": "CRUZ DOMINGUEZ ALVARO", "s": "Mexicali", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "6697": {"n": "DAVID HERNANDEZ HERNANDEZ (Motocicleta)", "s": "Santa Martha", "t": "TERRITORIAL CENTRO MOTO PARTES", "d": "Moto Partes"}, "6707": {"n": "Abraham Guerrero Gomez  ( Promotor de ventas)", "s": "Celaya", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "6731": {"n": "VICTOR ADRIAN GUTIERREZ CASAS", "s": "Forum Tlaquepaque", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "6764": {"n": "SUSANA MIXCOALT LOPEZ", "s": "Puebla CAPU (1)", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "6789": {"n": "Enrique Salvador Sanchez Ortiz ( Promotor de ventas)", "s": "Puerto Vallarta", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "6791": {"n": "PEDRO MENA GAMAS", "s": "Cardenas", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "6812": {"n": "ARMANDO VAZQUEZ HERNANDEZ", "s": "Coatzacoalcos", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "6828": {"n": "Porfirio Diaz Gutierrez", "s": "Oaxaca", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "6904": {"n": "DIEGO ARMANDO RANGEL TENORIO", "s": "Saltillo", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "6960": {"n": "YAMILE MAVEL VALENZUELA PEREZ", "s": "Villahermosa", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "7018": {"n": "ARTURO CASTRO MORALES (Promotor de Ventas)", "s": "Veracruz Tejeria", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "7034": {"n": "Luis Manuel Tiscareño Mendez ( Promotores de venta)", "s": "Federalismo", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "7095": {"n": "Yovani Misael Correa Mendoza (Promotor de Ventas)", "s": "Cuernavaca", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "7097": {"n": "Brayan Uriel Valdez Hernandez (Motocicleta)", "s": "Cancun Talleres", "t": "TERRITORIAL PENINSULA MOTO PARTES", "d": "Moto Partes"}, "7146": {"n": "PAMELA SEGUNDO LOPEZ", "s": "Veracruz Tejeria", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "7235": {"n": "Jose Vidaña Lopez ( Promotor de ventas)", "s": "Nogales", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "7362": {"n": "Francisco Garcia Rodriguez ( Promotor de ventas)", "s": "Querétaro Luis Pasteur", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "7397": {"n": "JAIRO MERJIL CASTELLANOS (Motocicleta)", "s": "Ciudad Juárez La Raza", "t": "TERRITORIAL NORTE MOTO PARTES", "d": "Moto Partes"}, "7399": {"n": "URIEL GERARDO GUZMAN HERNANDEZ (Motocicleta)", "s": "Tepic", "t": "TERRITORIAL OCCIDENTE MOTO PARTES", "d": "Moto Partes"}, "7443": {"n": "DAMARIS VASABE CABAÑAS", "s": "CDMX Cuauhtemoc", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "7467": {"n": "Noe Francisco Solis Gomez ( Promotor de ventas)", "s": "Playa del carmen", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "7523": {"n": "Jorge Abraham Martinez Barba ( Promotor de ventas)", "s": "Colon", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "7605": {"n": "Oliver Ulises Perez Gomez", "s": "Colonia Jalisco", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "7673": {"n": "SERGIO ADRIAN MARTINEZ MARQUEZ", "s": "Chalco", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "7691": {"n": "Josué Eduardo Zarco Hernández", "s": "Pachuca", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "7735": {"n": "HERNANDEZ AGUNDEZ RIGOBERTO", "s": "La Paz", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "7759": {"n": "Blanca Nancy Martínez Hernandez", "s": "Vallejo", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "7768": {"n": "Jaime Adriel Astorga Lopez", "s": "Mazatlán Rafael Buelna", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "7793": {"n": "Josue Javier Gallardo Gomez (Promotor de ventas)", "s": "Poza Rica", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "7824": {"n": "Jared Elihu Hernandez Avila", "s": "Torreón", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "7854": {"n": "Armando Rubio Covarrubias (Promotor de ventas)", "s": "Mexicali Colegio Militar", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "7931": {"n": "Ronaldo Emmanuel Olivares Contreras ( promotor de venta)", "s": "Uruapan", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "7945": {"n": "JOSE ALBERTO ORTIZ MARTINEZ", "s": "Uruapan", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "7947": {"n": "Edgar Lagunas Tellez ( Promotor de ventas)", "s": "Morelia libramiento", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "8050": {"n": "Cruz Marin Vianey Andrea", "s": "Ensenada B.C.", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "8124": {"n": "MIRIAM ELIZABETH BEJARANO CORTES", "s": "Ojo de Agua", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "8138": {"n": "Eduardo Ernesto Chan Ramos ( Promotor de ventas)", "s": "Cancun Talleres", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "8170": {"n": "Jose Marcos Perez Garcia", "s": "Puebla Bugambilias", "t": "TERRITORIAL GOLFO MOTO PARTES", "d": "Moto Partes"}, "8177": {"n": "Eduardo Sanchez Anaya ( Promotor de Ventas)", "s": "Puebla Reforma", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "8196": {"n": "Miguel Guadalupe Escoto Alvarez ( Promotor de ventas)", "s": "Guasave", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "8231": {"n": "MARTIN URIEL SANCHEZ MONROY", "s": "Ensenada B.C.", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "8258": {"n": "Juan Antonio Ovando Bautista (promotor de ventas)", "s": "Villahermosa Periferico", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "8280": {"n": "JOSE ANGEL BUENO MARTINEZ", "s": "Aguascalientes Convención", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "8287": {"n": "Gabriela Calzadillas Valenzuela", "s": "Chihuahua Canal Colón", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "8338": {"n": "Ivan Jimenez Valdez  ( Promotor de Ventas)", "s": "Puebla CAPU (1)", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "8349": {"n": "Alberto Dominguez Galvan", "s": "Queretaro Nacion", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "8387": {"n": "DELGADO RAMIREZ JOEL", "s": "Fresnillo", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "8434": {"n": "Javier Corangues Morales (Promotor deVentas)", "s": "Vallejo", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "8457": {"n": "CARLOS ARTURO FUENTES MAYA", "s": "Tijuana", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "8512": {"n": "Uriel Cruz Guzmán (Promotor de Ventas)", "s": "Tehuacan Puebla", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "8593": {"n": "JOSE RAMON LARA MORENO ( promotor de ventas)", "s": "Tepic", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "8624": {"n": "IMELDA DEL CARMEN LOPEZ LOPEZ (Motocicleta)", "s": "Villahermosa Universidad", "t": "TERRITORIAL GOLFO MOTO PARTES", "d": "Moto Partes"}, "8629": {"n": "JOSE LUIS RAMIREZ GARCIA", "s": "Bodega Cdmx Sur", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "8746": {"n": "Jorge Luis Ek Soberanis ( Promotor de ventas)", "s": "Chetumal", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "8779": {"n": "Cesar David Rosales Gonzalez ( promotor de ventas)", "s": "Durango", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "8792": {"n": "JUAN TIRADO GARIBAY", "s": "Morelia Madero", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "8831": {"n": "OSCAR ADRIAN VAZQUEZ ALEMAN", "s": "Minatitlan", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "8863": {"n": "Humberto Antonio Gallegos Cubedo", "s": "Obregón Rodolfo Elias Calles", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "8901": {"n": "Carolina Gutierrez Olvera ( Promotor de ventas)", "s": "Guadalupe Zacatecas", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "8902": {"n": "Carlos Enrique Gonzalez Torres ( Promotor  de ventas)", "s": "Ensenada B.C.", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "8924": {"n": "HIRAM CRUZ SEVERINO ( Promotor de Ventas)", "s": "Boca del Rio Ejercito Mexicano", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "8951": {"n": "Ricardo Alfonso Ramirez Torres (Promotor de ventas)", "s": "Reynosa", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "8963": {"n": "Daniel Alfonzo Adrian Pech (Promotor de Ventas)", "s": "Ciudad del Carmen", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "8990": {"n": "Eric Omar Hernandez Cocom", "s": "Ciudad del Carmen", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "8995": {"n": "Guerrero Salazar Jose Manuel", "s": "Guadalupe Zacatecas", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "9030": {"n": "Yasmin Virginia Espinoza Esquivel (Promotor de ventas)", "s": "Toluca", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "9054": {"n": "JUAN CARLOS CASTILLO SIERRA", "s": "Cordoba", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "9070": {"n": "Rives Santos Nisa Stefany", "s": "Villahermosa", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "9101": {"n": "Hector Noe Anguiano Uribe ( promotor de ventas)", "s": "Colima", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "9102": {"n": "Edwin Yair Rico Chavez", "s": "Rojo Gómez", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "9122": {"n": "Kevin Roberto Alvarado Fuente (Motocicleta)", "s": "Culiacán Blvd. Zapata", "t": "TERRITORIAL NORTE MOTO PARTES", "d": "Moto Partes"}, "9213": {"n": "Carlos Eduardo Garcia Ramos (Motocicleta)", "s": "Rojo Gómez", "t": "TERRITORIAL CENTRO MOTO PARTES", "d": "Moto Partes"}, "9280": {"n": "GLORIA VALERIA RAMIREZ TOVAR", "s": "Bodega Cdmx Sur", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "9291": {"n": "Juan Edrey Reyes Flores", "s": "Guadalupe", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "9319": {"n": "BENIGNO ALEJANDRO RANGEL HERNANDEZ", "s": "Salamanca", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "9334": {"n": "GILBERTO ARNOLDO CASTILLO MOLINA", "s": "Tultitlan", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "9378": {"n": "Daniel Aaron Mendoza Jimenez (promotor de ventas)", "s": "Ojo de Agua", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "9390": {"n": "Alonso Monroy  Garnica", "s": "Chalco", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "9429": {"n": "Gerardo Arturo Sosa Euan  (Promotor de ventas)", "s": "Merida Circuito Sur", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "9432": {"n": "Francisco Javier Estrada Perez", "s": "Chihuahua Cuauhtemoc", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "9447": {"n": "Miguel Ángel Hernandez Rojo", "s": "Ecatepec", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "9476": {"n": "ERICK RAFAEL BECERRA ZARAGOZA", "s": "Tultitlan", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "9512": {"n": "Arturo Hernandez Chiquito", "s": "Chalco", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "9541": {"n": "Teresa Castro Rangel ( Promotor de ventas)", "s": "Pachuca", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "9654": {"n": "CARLOS HUMBERTO HERMOSILLO GUTIERREZ", "s": "Monterrey Lincoln", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "9709": {"n": "Felipe de Jesus Cortes Santillan ( Promotor de Ventas)", "s": "Central camionera", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "9761": {"n": "Edwin Alexander Sarabia Moo", "s": "Merida Canek", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "9842": {"n": "Martin Rocha Contreras ( promotor de ventas)", "s": "Pelicano", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "9846": {"n": "Carlos Davila Rodriguez ( Promotor de ventas)", "s": "Torreón", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "9857": {"n": "Griselda Valdes Ramirez", "s": "Toluca", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "9877": {"n": "GARCIA PEREZ TEDDY", "s": "Ciudad Valles SLP", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "9878": {"n": "Ivan Alberto Vela Hernandez (Motocicleta)", "s": "Merida Itzaes", "t": "TERRITORIAL PENINSULA MOTO PARTES", "d": "Moto Partes"}, "9927": {"n": "Cynthia Berenice Vazquez Sauballet", "s": "CDMX Cuauhtemoc", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "9934": {"n": "Victor Hugo Muñoz Contreras (Promotor de Ventas)", "s": "Salamanca", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "10011": {"n": "Carlos Alberto Martinez Ortiz ( Promotor de Ventas)", "s": "Ciudad Valles SLP", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "10025": {"n": "RAUL MANZANO TORRES (Motocicleta)", "s": "Acapulco Constituyentes", "t": "TERRITORIAL CENTRO MOTO PARTES", "d": "Moto Partes"}, "10062": {"n": "FERNANDO VALLEJO MARTIN (Motocicleta)", "s": "Ecatepec", "t": "TERRITORIAL CENTRO MOTO PARTES", "d": "Moto Partes"}, "10073": {"n": "VALENCIA AGUILAR JESUS ALBERTO", "s": "Uruapan", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "10117": {"n": "Daniel Alejandro Plascencia Mendoza (Promotor de ventas)", "s": "Adolf Horn", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "10183": {"n": "Irving Flores Villa (Motocicleta)", "s": "Morelia libramiento", "t": "TERRITORIAL OCCIDENTE MOTO PARTES", "d": "Moto Partes"}, "10200": {"n": "Roberto Javier Torres Reyes (Promotor de Ventas)", "s": "Zamora", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "10276": {"n": "Julián Alejandro Guzman Guzman", "s": "Tepic", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "10328": {"n": "Lorenzo Mejia Rosas", "s": "Obregón Rodolfo Elias Calles", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "10344": {"n": "Jose Alberto Garduño Zaragoza", "s": "Toluca", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "10468": {"n": "jesus manuel tellez magaña", "s": "Manzanillo", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "10559": {"n": "Cristhian Israel Vázquez Garcia", "s": "Zamora", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "10607": {"n": "JOSE RAMON OSORIO PACHECO (Motocicleta)", "s": "Chetumal", "t": "TERRITORIAL PENINSULA MOTO PARTES", "d": "Moto Partes"}, "10671": {"n": "Frediberto Villaseñor Hernandez", "s": "Morelia libramiento", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "10741": {"n": "JOSE GENARO GALVAN ROBLEDO (Motocicleta)", "s": "San Luis", "t": "TERRITORIAL SURESTE MOTO PARTES", "d": "Moto Partes"}, "10757": {"n": "YOALI RODRIGUEZ MORALES", "s": "Boca del Rio Ejercito Mexicano", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "10792": {"n": "MIGUEL ANGEL SILES ZULOAGA (Motocicleta)", "s": "Toluca", "t": "TERRITORIAL CENTRO MOTO PARTES", "d": "Moto Partes"}, "10796": {"n": "Miguel Antonio Pacheco Escamilla ( Promotor de ventas)", "s": "Toluca Pino Suarez", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "10852": {"n": "Alexis Enrique Lopez Porras", "s": "Matamoros", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "10893": {"n": "Jose Antonio Verdin Rosas (Promotor de ventas)", "s": "Colonia Jalisco", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "10903": {"n": "SEBASTIAN ANTONIO ROMERO MEDINA", "s": "Tultitlan", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "10952": {"n": "Victor Manuel Alfaro Valencia ( Promotor de ventas)", "s": "Acapulco Constituyentes", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "10985": {"n": "MARIBEL MARTINEZ NOGUEDA", "s": "Toluca Pino Suarez", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "10993": {"n": "Cruz Alberto Guzman Rodriguez ( Promotor de ventas)", "s": "Santa Catarina", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "10996": {"n": "Norberto Santamaria Costeño (Promotor de Ventas)", "s": "Xalapa", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "11033": {"n": "Pablo Leon Jimenez ( Promotor de ventas)", "s": "Tulancingo", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "11058": {"n": "ADRIAN GARCIA BERMUDEZ", "s": "Puebla CAPU (1)", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "11062": {"n": "JAVIER OCAMPO FLORES", "s": "Toluca Pino Suarez", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "11149": {"n": "Juan Andres Estrada Aguilar (Promotor de ventas)", "s": "San Jose del Cabo", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "11194": {"n": "Triana Felix Lorena ( Promotor de ventas)", "s": "Fresnillo", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "11198": {"n": "Jorge Niño Izazaga ( Promotor de ventas)", "s": "Ecatepec", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "11207": {"n": "Roger Ortiz Huber (Promotor de ventas)", "s": "Cardenas", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "11268": {"n": "Roberto Javier Cadena Alegria", "s": "Veracruz Diaz Miron", "t": "TERRITORIAL GOLFO MOTO PARTES", "d": "Moto Partes"}, "11276": {"n": "Juan Rudi Gomez Espinosa ( Promotor de Ventas )", "s": "Comitan", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "11290": {"n": "Isidro Ocampo Tabaco ( promotor de ventas)", "s": "Neza", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "11321": {"n": "Ana Carla Sanchez Perez ( Promotor de ventas)", "s": "San Juan del Rio", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "11339": {"n": "Lorna Larissa Mendoza Muñiz (Promotor de ventas)", "s": "Chihuahua Tecnologico", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "11340": {"n": "Juan Carlos Bravo Benitez", "s": "Irapuato", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "11348": {"n": "Ismael Gutierrez Amaral", "s": "Culiacán Blvd. Zapata", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "11361": {"n": "Josue Alimi Ferrer Padilla", "s": "Cordoba", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "11393": {"n": "Victor Manuel Cruz Gonzalez (Promotor de ventas)", "s": "Oaxaca Madero", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "11397": {"n": "Jennifer Alondra Duran Estrada ( Promotor de ventas)", "s": "Hermosillo Periferico", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "11489": {"n": "LUNA POLANCO ISIDRO IRAM", "s": "La Paz", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "11529": {"n": "Allan Fabricio Martinez Velazquez ( Promotor de ventas)", "s": "Rojo Gómez", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "11611": {"n": "Rodolfo Garcia Salmon ( Promotor de ventas)", "s": "Tijuana 5 y 10", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "11622": {"n": "Jesus Alberto Muñoz Saucedo ( promotor de venta)", "s": "San Luis Rio Colorado", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "11693": {"n": "Hugo Arturo Becerril Quintana (Motocicleta)", "s": "Central camionera", "t": "TERRITORIAL OCCIDENTE MOTO PARTES", "d": "Moto Partes"}, "11741": {"n": "Antonio Daniel Ruiz Gordillo", "s": "Comitan", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "11901": {"n": "Luis Daniel Castillo Sanchez ( Promotor de ventas)", "s": "Leon Torres Landa", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "12036": {"n": "Adrian Sierra Solorzano ( Promotor de ventas)", "s": "Santa Martha", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "12070": {"n": "Brayan Fernando Gonzalez Ramirez ( Promotor de ventas)", "s": "Tijuana", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "12100": {"n": "Omar Alejandro Martinez Martinez (Promotor de ventas)", "s": "Mexicali", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "12109": {"n": "Sergio Alejandro De Loza Martin (Promotor de ventas)", "s": "Tepatitlan", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "12144": {"n": "Angel Nuñez Lopez (Motocicleta)", "s": "Neza", "t": "TERRITORIAL CENTRO MOTO PARTES", "d": "Moto Partes"}, "12318": {"n": "Mendez Aguilar Carlos Eduardo (Motocicleta)", "s": "Tapachula Moto Partes", "t": "TERRITORIAL SURESTE MOTO PARTES", "d": "Moto Partes"}, "12328": {"n": "Diana Lizbeth De Hilario Vazquez", "s": "Puebla Reforma", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "12338": {"n": "Jose Javier Garcia Ortiz", "s": "Pelicano", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "12404": {"n": "Luis Fernando Morales Calva (Motocicleta)", "s": "CDMX Cuauhtemoc", "t": "TERRITORIAL CENTRO MOTO PARTES", "d": "Moto Partes"}, "12435": {"n": "Nailea Norbid Santiago Rodriguez ( Promotor de ventas)", "s": "Coatzacoalcos", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "12539": {"n": "Julio Cesar Cardona Campos", "s": "Aguascalientes Haciendas", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "12576": {"n": "Carlos Edmundo Rodriguez Garcia", "s": "Chihuahua Canal Colón", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "12578": {"n": "Ivan Arturo Becerril Hernandez ( Promotor de ventas)", "s": "Chalco", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "12601": {"n": "Ezequiel Montero Lopez (Motocicleta)", "s": "Oaxaca", "t": "TERRITORIAL GOLFO MOTO PARTES", "d": "Moto Partes"}, "12661": {"n": "Victor Alberto Hernandez Garcia", "s": "Nuevo Laredo", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "12675": {"n": "Amado Ignacio Benitez De Jesus", "s": "Oaxaca", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "12689": {"n": "Josue Samuel Hernandez Uliverri (Motocicleta)", "s": "Guadalupe", "t": "TERRITORIAL NORTE MOTO PARTES", "d": "Moto Partes"}, "12706": {"n": "Elizabeth Garcia Corona", "s": "Toluca", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "12761": {"n": "Daniel Alejandro Ortiz Flores ( Promotor de ventas)", "s": "Aguascalientes Haciendas", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "12887": {"n": "Jair Alexander Sanchez Resendiz ( promotor de ventas)", "s": "Queretaro Nacion", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "12902": {"n": "Marcotulio Montemayor Chavez ( Promotor de ventas)", "s": "Apodaca", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "12921": {"n": "Yizreel Adonay Barreto Avendaño", "s": "Oaxaca", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "13064": {"n": "Gustavo Cortes Epigmenio (Motocicleta)", "s": "Bodega Cdmx Sur", "t": "TERRITORIAL CENTRO MOTO PARTES", "d": "Moto Partes"}, "13078": {"n": "Claudia Aseret Rodríguez Pérez", "s": "Monterrey Ruiz", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "13080": {"n": "Cesar Francisco Jimenez Vargas", "s": "Manzanillo", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "13086": {"n": "Montiel Medina Roberto", "s": "Mexicali", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "13095": {"n": "Americo Ramses Reyna Sanchez", "s": "Reynosa", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "13125": {"n": "Jesus Antonio Luna Martinez", "s": "Hermosillo Quiroga", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "13138": {"n": "Paloma Garcia Beltran", "s": "Tijuana", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "13146": {"n": "Irving Alexis Reyes Gonzalez ( Promotor de ventas)", "s": "Ciudad Victoria", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "13148": {"n": "Mario Jesús Hernández López", "s": "Oaxaca", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "13152": {"n": " Ezequiel de Jesús Ruelas Valencia", "s": "Nogales", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "13183": {"n": "Jose Adrian Hurtado Villalobos ( Promotor de ventas)", "s": "Ciudad Juarez Oscar Flores", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "13230": {"n": "Arturo Perales Grajeda ( Promotor de ventas)", "s": "Chihuahua Cuauhtemoc", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "13246": {"n": "Jorge Armando Macias Jimenez ( Promotor de ventas)", "s": "Monterrey Lincoln", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "13253": {"n": "Hector Eduardo Rodriguez Rangel ( Promotor de ventas)", "s": "León Aldama", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "13256": {"n": "Eduardo Isai Cruz Santiago", "s": "Oaxaca", "t": "TERRITORIAL GOLFO MOTO PARTES", "d": "Moto Partes"}, "13406": {"n": "Paul Michael Vazquez Hernadez  (Promotor de ventas)", "s": "Aguascalientes Convención", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "77101": {"n": "clientes talleres federalismo", "s": "Federalismo", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "77102": {"n": "clientes talleres adolf horn", "s": "Adolf Horn", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "77104": {"n": "clientes talleres pelicano", "s": "Pelicano", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "77105": {"n": "clientes talleres tesistan", "s": "Tesistan", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "77106": {"n": "clientes talleres merida circuito sur", "s": "Merida Circuito Sur", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "77109": {"n": "clientes talleres veracruz tejeria", "s": "Veracruz Tejeria", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "77110": {"n": "clientes talleres xalapa", "s": "Xalapa", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "77119": {"n": "clientes talleres hermosillo", "s": "Hermosillo", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "77120": {"n": "clientes talleres reynosa", "s": "Reynosa", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "77121": {"n": "clientes talleres matamoros", "s": "Matamoros", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "77124": {"n": "clientes talleres zamora", "s": "Zamora", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "77127": {"n": "clientes talleres puebla bugambilias", "s": "Puebla Bugambilias", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "77129": {"n": "Clientes Talleres tuxtla gutierrez", "s": "Tuxtla Gutierrez", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "77130": {"n": "Clientes Talleres Queretaro Luis Pasteur", "s": "Querétaro Luis Pasteur", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "77135": {"n": "Clientes Talleres Veracruz Cuauhtemoc", "s": "Veracruz Cuauhtemoc", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "77137": {"n": "Clientes Talleres Rojo Gómez", "s": "Rojo Gómez", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "77139": {"n": "Clientes Talleres Guasave", "s": "Guasave", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "77141": {"n": "Clientes Talleres Ensenada B.C.S.", "s": "Ensenada B.C.", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "77142": {"n": "Clientes Talleres Tijuana", "s": "Tijuana", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "77146": {"n": "Clientes Talleres villahermosa", "s": "Villahermosa", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "77151": {"n": "Clientes Talleres Acapulco", "s": "Acapulco", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "77155": {"n": "Clientes Talleres Uruapa", "s": "Uruapan", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "77158": {"n": "Clientes Talleres belisario dominguez", "s": "Belisario Dominguez", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "77160": {"n": "Clientes Talleres Cuernavaca", "s": "Cuernavaca", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "77162": {"n": "Clientes Talleres Guadalupe", "s": "Guadalupe", "t": "TERRITORIAL PACIFICO", "d": "Talleres"}, "77164": {"n": "Clientes Talleres Monterrey Lincoln", "s": "Monterrey Lincoln", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "77165": {"n": "Clientes Talleres Santa Catarina", "s": "Santa Catarina", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "77168": {"n": "Clientes Talleres tultitlan", "s": "Tultitlan", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "77171": {"n": "Clientes Talleres Cancún Aeropuerto", "s": "Cancun Aeropuerto", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "77172": {"n": "Clientes Talleres Cancún Portillo", "s": "Cancun Portillo", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "77173": {"n": "Clientes Talleres Cancún Talleres", "s": "Cancun Talleres", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "77176": {"n": "Clientes Talleres Lazaro Cardenas", "s": "Lazaro Cardenas", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "77179": {"n": "Clientes Talleres Merida Canek", "s": "Merida Canek", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "77180": {"n": "Clientes Talleres Merida Itzaes", "s": "Merida Itzaes", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "77181": {"n": "Clientes Talleres Mérida México", "s": "Mérida México", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "77182": {"n": "Clientes Talleres Mérida Oriente", "s": "Merida Oriente", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "77183": {"n": "Clientes Talleres Morelia Libramiento", "s": "Morelia libramiento", "t": "TERRITORIAL CENTRO NORTE", "d": "Talleres"}, "77186": {"n": "Clientes Talleres Playa del Carmen", "s": "Playa del carmen", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "77188": {"n": "Clientes Talleres puebla capu", "s": "Puebla CAPU (1)", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "77190": {"n": "Clientes Talleres mexicali lazaro cardenas", "s": "Mexicali Lazaro Cardenas", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "77191": {"n": "Clientes Talleres Hermosillo Periferico", "s": "Hermosillo Periferico", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "77193": {"n": "Clientes Talleres Villahermosa periferico", "s": "Villahermosa Periferico", "t": "TERRITORIAL SURESTE", "d": "Talleres"}, "77194": {"n": "Clientes Talleres Ciudad del Carmen", "s": "Ciudad del Carmen", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "78090": {"n": "Pendiente Merida Canek Refaccionarias", "s": "Merida Canek", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "78091": {"n": "Pendiente Matamoros Refaccionarias", "s": "Matamoros", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "78093": {"n": "Pendiente Gomez Palacio Refaccionarias", "s": "Gomez Palacio", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "78094": {"n": "Pendiente Xalapa Refaccionarias", "s": "Xalapa", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "78098": {"n": "Pendiente Chalco Refaccionarias", "s": "Chalco", "t": "Directos Cedis Refaccionarias", "d": "Refaccionarias"}, "78103": {"n": "Pendiente Ciudad Valles SLP Refaccionarias", "s": "Ciudad Valles SLP", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "78105": {"n": "Pendiente Uruapan Refaccionarias", "s": "Uruapan", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "78107": {"n": "Pendiente Guasave Refaccionarias", "s": "Guasave", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "78112": {"n": "Pendiente Merida Itzaes Refaccionarias", "s": "Merida Itzaes", "t": "TERRITORIAL PENINSULA", "d": "Talleres"}, "78113": {"n": "Pendiente Bodega Cdmx Sur Refaccionarias", "s": "Bodega Cdmx Sur", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "78119": {"n": "Pendiente Toluca Pino Suarez Refaccionarias", "s": "Toluca Pino Suarez", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "78120": {"n": "Pendiente Hermosillo Periferico Refaccionarias", "s": "Hermosillo Periferico", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "78122": {"n": "Pendiente Neza Refaccionarias", "s": "Neza", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "78130": {"n": "Pendiente Hermosillo Quiroga Refaccionarias", "s": "Hermosillo Quiroga", "t": "ORTIZ LOPEZ JOEL", "d": "Refaccionarias"}, "78133": {"n": "Pendiente Belisario Dominguez Empresas", "s": "Belisario Dominguez", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78134": {"n": "Pendiente León Aldama Empresas", "s": "León Aldama", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "78135": {"n": "Pendiente Pelicano Empresas", "s": "Pelicano", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78136": {"n": "Pendiente Central camionera Empresas", "s": "Central camionera", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78137": {"n": "Pendiente Querétaro Luis Pasteur Empresas", "s": "Querétaro Luis Pasteur", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "78138": {"n": "Pendiente Puebla CAPU (1) Empresas", "s": "Puebla CAPU (1)", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "78140": {"n": "Pendiente Colon Empresas", "s": "Colon", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78141": {"n": "Pendiente Monterrey Ruiz Empresas", "s": "Monterrey Ruiz", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78143": {"n": "Pendiente Toluca Empresas", "s": "Toluca", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "78146": {"n": "Pendiente Culiacán Blvd. Zapata Empresas", "s": "Culiacán Blvd. Zapata", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78147": {"n": "Pendiente Villahermosa Empresas", "s": "Villahermosa", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78148": {"n": "Pendiente Tijuana Empresas", "s": "Tijuana", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78149": {"n": "Pendiente Chihuahua Canal Colón Empresas", "s": "Chihuahua Canal Colón", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78150": {"n": "Pendiente Monterrey Lincoln Empresas", "s": "Monterrey Lincoln", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78151": {"n": "Pendiente Tampico 1 Norte Empresas", "s": "Tampico 1 Norte", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78152": {"n": "Pendiente Tuxtla Gutierrez Empresas", "s": "Tuxtla Gutierrez", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78154": {"n": "Pendiente San Luis Empresas", "s": "San Luis", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "78155": {"n": "Pendiente Torreón Empresas", "s": "Torreón", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78156": {"n": "Pendiente Tesistan Empresas", "s": "Tesistan", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78157": {"n": "Pendiente Cancún Portillo Empresas", "s": "Cancun Portillo", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78158": {"n": "Pendiente Hermosillo Empresas", "s": "Hermosillo", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78160": {"n": "Pendiente Pachuca Empresas", "s": "Pachuca", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "78161": {"n": "Pendiente Vallejo Empresas", "s": "Vallejo", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "78162": {"n": "Pendiente Ecatepec Empresas", "s": "Ecatepec", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "78163": {"n": "Pendiente Santa Martha Empresas", "s": "Santa Martha", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "78164": {"n": "Pendiente Celaya Empresas", "s": "Celaya", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "78165": {"n": "Pendiente Rojo Gómez Empresas", "s": "Rojo Gómez", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "78166": {"n": "Pendiente Mexicali Empresas", "s": "Mexicali", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78167": {"n": "Pendiente Ciudad Juárez La Raza Empresas", "s": "Ciudad Juárez La Raza", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78168": {"n": "Pendiente Tapachula Empresas", "s": "Tapachula", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78169": {"n": "Pendiente Tultitlan Empresas", "s": "Tultitlan", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "78170": {"n": "Pendiente Coatzacoalcos Empresas", "s": "Coatzacoalcos", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78171": {"n": "Pendiente Guadalupe Empresas", "s": "Guadalupe", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78172": {"n": "Pendiente Tijuana Centro Empresas", "s": "Tijuana Centro", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78173": {"n": "Pendiente Colima Empresas", "s": "Colima", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "78174": {"n": "Pendiente Cuernavaca Empresas", "s": "Cuernavaca", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "78175": {"n": "Pendiente Oaxaca Empresas", "s": "Oaxaca", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "78176": {"n": "Pendiente La Paz Empresas", "s": "La Paz", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78177": {"n": "Pendiente Nuevo Laredo Empresas", "s": "Nuevo Laredo", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78178": {"n": "Pendiente Durango Empresas", "s": "Durango", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "78179": {"n": "Pendiente Morelia libramiento Empresas", "s": "Morelia libramiento", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "78180": {"n": "Pendiente Campeche Empresas", "s": "Campeche", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78181": {"n": "Pendiente Saltillo Empresas", "s": "Saltillo", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78182": {"n": "Pendiente Tampico 2 Centro Empresas", "s": "Tampico 2 Centro", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78183": {"n": "Pendiente Cardenas Empresas", "s": "Cardenas", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78184": {"n": "Pendiente Tepic Empresas", "s": "Tepic", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78185": {"n": "Pendiente Manzanillo Empresas", "s": "Manzanillo", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "78186": {"n": "Pendiente Adolf Horn Empresas", "s": "Adolf Horn", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78187": {"n": "Pendiente Mazatlán Rafael Buelna Empresas", "s": "Mazatlán Rafael Buelna", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78188": {"n": "Pendiente Escobedo Raúl Salinas Lozano Empresas", "s": "Escobedo Raúl Salinas Lozano", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78190": {"n": "Pendiente Obregón Rodolfo Elias Calles Empresas", "s": "Obregón Rodolfo Elias Calles", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78191": {"n": "Pendiente Boca del Rio Ejercito Mexicano Empresas", "s": "Boca del Rio Ejercito Mexicano", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "78193": {"n": "Pendiente Cancún Aeropuerto Empresas", "s": "Cancun Aeropuerto", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78194": {"n": "Pendiente Cordoba Empresas", "s": "Cordoba", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "78196": {"n": "Pendiente Puerto Vallarta Empresas", "s": "Puerto Vallarta", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78198": {"n": "Pendiente Colonia Jalisco Empresas", "s": "Colonia Jalisco", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78199": {"n": "Pendiente Irapuato Empresas", "s": "Irapuato", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "78200": {"n": "Pendiente Chihuahua Tecnologico Empresas", "s": "Chihuahua Tecnologico", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78201": {"n": "Pendiente Ensenada B.C.S. Empresas", "s": "Ensenada B.C.", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78202": {"n": "Pendiente Merida Oriente Empresas", "s": "Merida Oriente", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78203": {"n": "Pendiente Lazaro Cardenas Empresas", "s": "Lazaro Cardenas", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "78204": {"n": "Pendiente Monclova Empresas", "s": "Monclova", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78205": {"n": "Pendiente Los Mochis Empresas", "s": "Los Mochis", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78206": {"n": "Pendiente Reynosa Empresas", "s": "Reynosa", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78207": {"n": "Pendiente Ciudad Juarez Torres Empresas", "s": "Ciudad Juarez Torres", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78208": {"n": "Pendiente Minatitlan Empresas", "s": "Minatitlan", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78209": {"n": "Pendiente Chetumal Empresas", "s": "Chetumal", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78210": {"n": "Pendiente Nogales Empresas", "s": "Nogales", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78212": {"n": "Pendiente Tuxtla Panamericana Empresas", "s": "Tuxtla Panamericana", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78214": {"n": "Pendiente Cancun Talleres Empresas", "s": "Cancun Talleres", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78215": {"n": "Pendiente Villahermosa Periferico Empresas", "s": "Villahermosa Periferico", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78219": {"n": "Pendiente Veracruz Tejeria Empresas", "s": "Veracruz Tejeria", "t": "VILLACEBALLOS ESTRADA MARIO", "d": "Empresas"}, "78220": {"n": "Pendiente Queretaro Nacion Empresas", "s": "Queretaro Nacion", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "78222": {"n": "Pendiente Merida Canek Empresas", "s": "Merida Canek", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78223": {"n": "Pendiente Matamoros Empresas", "s": "Matamoros", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78224": {"n": "Pendiente Tepatitlan Empresas", "s": "Tepatitlan", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78225": {"n": "Pendiente Gomez Palacio Empresas", "s": "Gomez Palacio", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78227": {"n": "Pendiente Playa del carmen Empresas", "s": "Playa del carmen", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78229": {"n": "Pendiente Ciudad Victoria Empresas", "s": "Ciudad Victoria", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78230": {"n": "Pendiente Chalco Empresas", "s": "Chalco", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "78231": {"n": "Pendiente Santa Catarina Empresas", "s": "Santa Catarina", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78235": {"n": "Pendiente Ciudad Valles SLP Empresas", "s": "Ciudad Valles SLP", "t": "GALLARDO CARDONA GILDARDO", "d": "Empresas"}, "78237": {"n": "Pendiente Uruapan Empresas", "s": "Uruapan", "t": "CHAVEZ GARCIA JAIME", "d": "Empresas"}, "78239": {"n": "Pendiente Guasave Empresas", "s": "Guasave", "t": "ALMARAZ MARTINEZ DAVID", "d": "Empresas"}, "78241": {"n": "Pendiente Ojo de Agua Empresas", "s": "Ojo de Agua", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "78243": {"n": "Pendiente Villahermosa Universidad Empresas", "s": "Villahermosa Universidad", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78248": {"n": "Pendiente Ciudad del Carmen Empresas", "s": "Ciudad del Carmen", "t": "RAMÍREZ  CARAVEO ROGELIO", "d": "Empresas"}, "78249": {"n": "Pendiente Apodaca Empresas", "s": "Apodaca", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "78252": {"n": "Pendiente Hermosillo Periferico Empresas", "s": "Hermosillo Periferico", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "78254": {"n": "Pendiente Neza Empresas", "s": "Neza", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "200193": {"n": "Guadalupe Nallely Vanoye Espinoza", "s": "Ciudad Victoria", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "200218": {"n": "Raul Aguilar Martinez ( Promotor de ventas)", "s": "Guadalupe", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "200239": {"n": "Felipe de Jesus Vargas Castro ( Promotor de ventas)", "s": "Irapuato", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "200269": {"n": "Daniel Alejandro Ferreiro Velasco", "s": "Tijuana", "t": "PACHECO MARQUEZ EDGAR", "d": "Empresas"}, "200418": {"n": "Alberto Garcia Gonzalez ( promotor de ventas)", "s": "Monclova", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "200444": {"n": "Octavio Lopez Zamora", "s": "Toluca", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "200460": {"n": "Felipe de Jesús Antonio Castellanos", "s": "Oaxaca", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "200477": {"n": "Teofilo Denicio Angel Rivera (Promotor de ventas)", "s": "Tijuana la Curva", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "200488": {"n": "Jose Geronimo Martinez Montoya (Motocicleta)", "s": "Tuxtla Moto Partes", "t": "TERRITORIAL SURESTE MOTO PARTES", "d": "Moto Partes"}, "200514": {"n": "Maria Del Consuelo Reyes Patiño", "s": "Monterrey Lincoln", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "200530": {"n": "Eduardo Vargas Villalpando ( Promotor de ventas)", "s": "Escobedo Raúl Salinas Lozano", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "200549": {"n": "Javier Garcia Hernandez", "s": "Queretaro Nacion", "t": "D AQUINO DOMINGUEZ FERNANDO", "d": "Refaccionarias"}, "200598": {"n": "Jorge Jacobo Soto", "s": "Cuernavaca", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "200599": {"n": "Marco Antonio Olmos Flores", "s": "Saltillo", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "200620": {"n": "Francisco Ruben Guerrero Coronado ( Promotor de ventas)", "s": "Saltillo", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "200649": {"n": "Yair Moreno Fernandez (Promotor de ventas)", "s": "Veracruz Cuauhtemoc", "t": "TERRITORIAL GOLFO", "d": "Talleres"}, "200654": {"n": "Jose Domingo Ruiz Solis (Motocicleta)", "s": "Tapachula Moto Partes", "t": "TERRITORIAL SURESTE MOTO PARTES", "d": "Moto Partes"}, "200667": {"n": "Miguel Israel García Rodríguez (Motocicleta)", "s": "Veracruz Diaz Miron", "t": "TERRITORIAL GOLFO MOTO PARTES", "d": "Moto Partes"}, "200668": {"n": "Jesus Daniel Lopez Ruiz (Promotor de ventas)", "s": "Monterrey Ruiz", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "200673": {"n": "Rafael Garcia Jimenez", "s": "Santa Martha", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "200687": {"n": "Eder Ricardo Chavarria Romo", "s": "Monterrey Ruiz", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "200700": {"n": "Daniel Trinidad Peraza Hurtado (Promotor de ventas)", "s": "Hermosillo Quiroga", "t": "TERRITORIAL BAJA CALIFORNIA", "d": "Talleres"}, "200707": {"n": "Jesus Francisco Soto Puentes", "s": "Torreón", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "200723": {"n": "Cristopher Raul Campuzano Ocaña", "s": "Tultitlan", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "200734": {"n": "Roberto Carlos Preciado Santana (Promotor de ventas)", "s": "Manzanillo", "t": "TERRITORIAL OCCIDENTE", "d": "Talleres"}, "200747": {"n": "Manuel Alejandro Alvarez Avila", "s": "Ecatepec", "t": "GARCIA OCAMPO ZURIEL", "d": "Refaccionarias"}, "200767": {"n": "Santiago Ibarra Perez (Promotor de ventas)", "s": "Matamoros", "t": "TERRITORIAL NORTE", "d": "Talleres"}, "200778": {"n": "Gerardo Ivan Medina Trejo (Motocicleta)", "s": "Pachuca", "t": "TERRITORIAL SURESTE MOTO PARTES", "d": "Moto Partes"}, "200789": {"n": "Abdiel Reyes Briseño", "s": "Queretaro Nacion", "t": "ESPINO LOPEZ LUIS RAMON", "d": "Empresas"}, "200847": {"n": "Rusbel Rafael Ramos Leon", "s": "Tuxtla Gutierrez", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "200856": {"n": "Javier Alonso Laredo Fernandez", "s": "Monclova", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "200886": {"n": "Luis Alfredo Armstrong Rocha", "s": "Durango", "t": "DIAZ ACEVES JOSE MAGDALENO", "d": "Refaccionarias"}, "200909": {"n": "Sergio Chavez Herrera", "s": "Lazaro Cardenas", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}, "200937": {"n": "Christian Gustavo Reynoso Hernandez (Motocicleta)", "s": "Leon Moto Partes", "t": "TERRITORIAL OCCIDENTE MOTO PARTES", "d": "Moto Partes"}, "200944": {"n": "Juan Antonio Ibarra Gonzalez (Motocicleta)", "s": "Querétaro Luis Pasteur", "t": "TERRITORIAL SURESTE MOTO PARTES", "d": "Moto Partes"}, "200949": {"n": "Erick Omar Bautista Molina", "s": "Nuevo Laredo", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "200965": {"n": "Isis Valeria Martinez Garcia", "s": "Villahermosa", "t": "FERNANDEZ ISLAS JILMAR", "d": "Refaccionarias"}, "201015": {"n": "Raymundo Martinez Lopez", "s": "Rojo Gómez", "t": "ARELLANO RODRIGUEZ LUIS ENRIQUE", "d": "Empresas"}, "201023": {"n": "Maria Flores Jaime", "s": "Monclova", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "201067": {"n": "Ricardo Sebastian Martinez Arzola", "s": "Monterrey Ruiz", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "201069": {"n": "Mauro Aguirre Parra", "s": "Escobedo Raúl Salinas Lozano", "t": "SANCHEZ SANTOS JOSE DE JESUS", "d": "Empresas"}, "201115": {"n": "Jose Roberto Gomez Silerio (Motocicleta)", "s": "Torreón", "t": "TERRITORIAL NORTE MOTO PARTES", "d": "Moto Partes"}, "201128": {"n": "Erick Carrillo Vargas (Promotor de ventas)", "s": "Bodega Cdmx Sur", "t": "TERRITORIAL MEXICO", "d": "Talleres"}, "201147": {"n": "Edgar Ernesto Mendoza Najera", "s": "Acapulco", "t": "RIVERA HERNANDEZ JOSE ROBERTO", "d": "Refaccionarias"}};
 
@@ -119,144 +244,246 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const refRegistros = db.ref('registros');
 
-db.ref('.info/connected').on('value', s => {
-  document.getElementById('conn-label').textContent = s.val() ? 'En línea' : 'Sin conexión';
+db.ref('.info/connected').on('value', snap => {
+  const on = snap.val();
+  document.getElementById('conn-dot').style.background = on ? 'var(--accent)' : 'var(--danger)';
+  document.getElementById('conn-label').textContent = on ? 'En línea' : 'Sin conexión';
 });
 
-let allRecords = [];
-let charts = {};
+let records = [];
+let currentOrigen = '';
+let dashCharts = {};
 
 function enrich(r) {
   const emp = String(r.empleado || '').trim();
   const info = CATALOG[emp] || {};
-  return {
-    ...r,
-    nombre: info.n || ('Empleado ' + emp),
-    sucursal: info.s || 'Sin sucursal',
-    territorial: info.t || 'Sin territorial',
-    division: info.d || 'Sin división'
-  };
+  return { ...r, nombre: info.n || ('Emp. ' + emp), sucursal: info.s || 'Sin sucursal' };
 }
 
-db.ref('registros').on('value', snap => {
-  const raw = snap.val() || {};
-  allRecords = Object.values(raw).map(enrich);
-  populateFilters();
+refRegistros.on('value', snapshot => {
+  const data = snapshot.val();
+  records = data ? Object.entries(data).map(([id, r]) => ({ ...r, id })).sort((a,b)=>(b.ts||0)-(a.ts||0)) : [];
+  visibleCount = PAGE_SIZE;
+  renderTable();
+  populateFechas();
   applyFilters();
 });
 
-function populateFilters() {
-  const fechas = [...new Set(allRecords.map(r => r.fecha).filter(Boolean))].sort().reverse();
-  setOptions('f-fecha', fechas);
+// ── Parser ─────────────────────────────────────────────────────────────────────
+const RE_CODE = /^\d{7}$/;
+const RE_QTY_SOLO = /^\d{1,4}$/;
+const RE_QTY_DASH = /^(\d{1,4})\s+[-$]/;
+const NOISE_LINE = /(apymsa|cotizaci[oó]n|vigencia|vendedor|cliente|subtotal|chicote|acelerador|cargo|bikall|forza|descripci[oó]n|importe|faltante|venta perdida|venta negada|por falta|existencia|\d{1,2}:\d{2}\s*(a|p)\.m\.|\d{1,2}\/\d{1,2}\/\d{4}|@[A-Z]|thks|enterado|gracias|buena tarde|hay existencia|cedis|rotaci[oó]n|ajuste|m[aá]ximo|surtan)/i;
+
+function shouldSkip(l) {
+  if (/^\d/.test(l) && !l.includes('/')) return false;
+  return NOISE_LINE.test(l);
 }
 
-function setOptions(id, vals) {
-  const sel = document.getElementById(id);
-  const cur = sel.value;
-  while (sel.options.length > 1) sel.remove(1);
-  vals.forEach(v => { const o = new Option(v, v); sel.add(o); });
-  if (vals.includes(cur)) sel.value = cur;
+function parseText(raw) {
+  const acc = {}, order = [];
+  function addItem(code, qty) { if (acc[code]===undefined){acc[code]=0;order.push(code);} acc[code]+=qty; }
+  const lines = raw.split(/
+?
+/).map(l=>l.trim()).filter(Boolean);
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (shouldSkip(l)) continue;
+    const allCodes = l.match(/(\d{7})/g);
+    if (!allCodes) continue;
+    for (const code of allCodes) {
+      const after = l.slice(l.indexOf(code)+7);
+      const mI = after.match(/^\s*[.\-:,]?\s*(\d{1,4})\s*(pz|pzs|piezas?|pcs?|und?)?/i);
+      if (mI && mI[1]) { addItem(code,+mI[1]); continue; }
+      const mL = after.match(/.*(\d{1,4})\s*(pz|pzs|piezas?|pcs?|und?)?\s*$/i);
+      if (mL && mL[1]) { addItem(code,+mL[1]); continue; }
+      let found = false;
+      if (allCodes.length===1) {
+        for (let j=i+1; j<Math.min(i+4,lines.length); j++) {
+          const nxt=lines[j]; if (shouldSkip(nxt)) continue;
+          const mQF=nxt.match(RE_QTY_DASH); if (mQF){addItem(code,+mQF[1]);found=true;break;}
+          if (RE_QTY_SOLO.test(nxt)){addItem(code,+nxt);found=true;break;}
+          if (/\d{7}/.test(nxt)) break;
+        }
+      }
+      if (!found) addItem(code,1);
+    }
+  }
+  return order.map(code=>({code,qty:acc[code]}));
+}
+
+// ── Tabla ──────────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 50;
+let visibleCount = PAGE_SIZE;
+
+function renderTable() {
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty-state');
+  document.getElementById('stat-total').textContent = records.length;
+  document.getElementById('stat-pzas').textContent = records.reduce((s,r)=>s+(r.qty||1),0).toLocaleString('es-MX');
+  document.getElementById('stat-unique').textContent = new Set(records.map(r=>r.code)).size;
+  if (!records.length) { tbody.innerHTML=''; empty.style.display='block'; renderVerMas(); return; }
+  empty.style.display = 'none';
+  const visible = records.slice(0, visibleCount);
+  tbody.innerHTML = visible.map((r,i) => `<tr>
+    <td class="row-num">${records.length-i}</td>
+    <td style="font-family:var(--mono);font-size:12px;font-weight:500;">${r.empleado||'—'}</td>
+    <td class="date-cell">${r.fecha}</td>
+    <td class="date-cell">${r.hora}</td>
+    <td class="code-cell">${r.code}</td>
+    <td class="qty-cell">${(r.qty||1).toLocaleString('es-MX')} pz</td>
+    <td style="font-size:12px;color:var(--muted2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.origen||''}">${r.origen||'—'}</td>
+    <td><button class="del-btn" onclick="del('${r.id}')">×</button></td>
+  </tr>`).join('');
+  renderVerMas();
+}
+
+function renderVerMas() {
+  const el = document.getElementById('ver-mas-row');
+  if (!el) return;
+  const remaining = records.length - visibleCount;
+  if (remaining <= 0) { el.style.display='none'; return; }
+  el.style.display='';
+  el.querySelector('span').textContent = `Ver más (${remaining} restantes)`;
+}
+
+function verMas() {
+  visibleCount += PAGE_SIZE;
+  renderTable();
+}
+
+function del(id) { refRegistros.child(id).remove(); }
+function clearAll2() { document.getElementById('msg-input').value=''; }
+function clearAll() {
+  const pwd = prompt('Contraseña para borrar todos los registros:');
+  if (pwd===null) return;
+  if (pwd!=='apymsa2026') return showStatus('Contraseña incorrecta',true);
+  refRegistros.remove().then(()=>showStatus('Registros borrados',false));
+}
+
+function showStatus(msg,err) {
+  const el=document.getElementById('status-msg');
+  el.style.display='inline-block';
+  el.className='status-msg '+(err?'status-err':'status-ok');
+  el.textContent=msg;
+  setTimeout(()=>{el.style.display='none';},3500);
+}
+
+function setLoading(on,label) {
+  const btn=document.getElementById('parse-btn'),txt=document.getElementById('btn-text');
+  btn.disabled=on;
+  txt.innerHTML=on?`<span class="spinner"></span> ${label||'Procesando...'}`:'Extraer registros';
+}
+
+function mergeRecord(code,qty,fecha,hora,origen,empleado) {
+  refRegistros.push({fecha,hora,code,qty,origen:origen||'',empleado:empleado||'',ts:Date.now()});
+}
+
+function addManual() {
+  const empEl=document.getElementById('manual-emp'),codeEl=document.getElementById('manual-code'),qtyEl=document.getElementById('manual-qty');
+  const empleado=empEl.value.trim(),code=codeEl.value.trim(),qty=parseInt(qtyEl.value)||1;
+  if (!empleado){empEl.style.borderColor='var(--danger)';setTimeout(()=>empEl.style.borderColor='var(--border)',1500);return showStatus('Ingresa el número de empleado',true);}
+  if (!/^\d{7}$/.test(code)){codeEl.style.borderColor='var(--danger)';setTimeout(()=>codeEl.style.borderColor='var(--border)',1500);return showStatus('Código debe tener 7 dígitos',true);}
+  const now=new Date();
+  mergeRecord(code,qty,now.toLocaleDateString('es-MX'),now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),'',empleado);
+  showStatus(`${code} — ${qty} pz agregado`,false);
+  codeEl.value='';qtyEl.value='';codeEl.focus();
+}
+
+async function extractAndAdd() {
+  const empEl=document.getElementById('extract-emp'),empleado=empEl.value.trim(),text=document.getElementById('msg-input').value.trim();
+  if (!empleado){empEl.style.borderColor='var(--danger)';setTimeout(()=>empEl.style.borderColor='var(--border)',1500);return showStatus('Ingresa el número de empleado',true);}
+  if (!text) return showStatus('Pega un mensaje de texto',true);
+  const now=new Date(),fecha=now.toLocaleDateString('es-MX'),hora=now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  setLoading(true,'Extrayendo...');
+  const items=parseText(text);
+  setLoading(false);
+  if (!items.length) return showStatus('No se encontraron códigos.',true);
+  items.forEach(({code,qty})=>mergeRecord(String(code),+qty,fecha,hora,'',empleado));
+  showStatus(`${items.length} código${items.length!==1?'s':''} procesado${items.length!==1?'s':''}`,false);
+  document.getElementById('msg-input').value='';
+}
+
+function exportExcel() {
+  if (!records.length) return showStatus('Sin datos para exportar',true);
+  const pwd=prompt('Contraseña para exportar:');
+  if (pwd===null) return;
+  if (pwd!=='apymsa2026') return showStatus('Contraseña incorrecta',true);
+  const wb=XLSX.utils.book_new();
+  const detail=records.map((r,i)=>({'No.':i+1,'No. Empleado':r.empleado||'','Fecha':r.fecha,'Hora':r.hora,'Código':r.code,'Cantidad (pz)':r.qty,'Origen':r.origen||''}));
+  const ws=XLSX.utils.json_to_sheet(detail);
+  ws['!cols']=[{wch:5},{wch:14},{wch:12},{wch:8},{wch:12},{wch:13},{wch:35}];
+  XLSX.utils.book_append_sheet(wb,ws,'Ventas Negadas');
+  XLSX.writeFile(wb,`ventas_negadas_${new Date().toLocaleDateString('es-MX').replace(/\//g,'-')}.xlsx`);
+  showStatus('Excel descargado',false);
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────────
+function populateFechas() {
+  const fechas=[...new Set(records.map(r=>r.fecha).filter(Boolean))].sort().reverse();
+  const sel=document.getElementById('f-fecha'),cur=sel.value;
+  while(sel.options.length>1) sel.remove(1);
+  fechas.forEach(v=>{const o=new Option(v,v);sel.add(o);});
+  if(fechas.includes(cur)) sel.value=cur;
 }
 
 function applyFilters() {
-  const fec = document.getElementById('f-fecha').value;
-  let data = allRecords;
-  if (fec) data = data.filter(r => r.fecha === fec);
-  renderAll(data);
+  const fec=document.getElementById('f-fecha').value;
+  let data=records.map(enrich);
+  if(fec) data=data.filter(r=>r.fecha===fec);
+  renderDash(data);
 }
 
-function resetFilters() {
-  ['f-fecha'].forEach(id => document.getElementById(id).value = '');
-  applyFilters();
-}
+function resetFilters() { document.getElementById('f-fecha').value=''; applyFilters(); }
 
-function count(data, key) {
-  const m = {};
-  data.forEach(r => { const k = r[key] || 'Sin datos'; m[k] = (m[k]||0) + 1; });
-  return m;
-}
-function sumQty(data, key) {
-  const m = {};
-  data.forEach(r => { const k = r[key] || 'Sin datos'; m[k] = (m[k]||0) + (r.qty||1); });
-  return m;
-}
-function topN(obj, n, byVal=true) {
-  return Object.entries(obj).sort((a,b) => b[1]-a[1]).slice(0, n);
-}
+function topN(obj,n) { return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n); }
+function countBy(data,key) { const m={}; data.forEach(r=>{const k=r[key]||'Sin datos';m[k]=(m[k]||0)+1;}); return m; }
+function sumQtyBy(data,key) { const m={}; data.forEach(r=>{const k=r[key]||'Sin datos';m[k]=(m[k]||0)+(r.qty||1);}); return m; }
 
-function renderAll(data) {
-  // Stats
-  document.getElementById('s-total').textContent = data.length.toLocaleString('es-MX');
-  document.getElementById('s-pzas').textContent = data.reduce((s,r)=>s+(r.qty||1),0).toLocaleString('es-MX');
-  document.getElementById('s-prods').textContent = new Set(data.map(r=>r.code)).size.toLocaleString('es-MX');
-  document.getElementById('s-emps').textContent = new Set(data.map(r=>r.empleado).filter(Boolean)).size.toLocaleString('es-MX');
-
-  // Top colaboradores
-  const byColab = count(data, 'nombre');
-  const topColab = topN(byColab, 10);
-  const maxColab = topColab[0]?.[1] || 1;
-  document.getElementById('top-colab').innerHTML = topColab.map(([name, val], i) => `
+function renderTopList(elId,entries) {
+  const max=entries[0]?.[1]||1;
+  document.getElementById(elId).innerHTML=entries.map(([name,val],i)=>`
     <div class="top-item">
       <span class="top-rank">${i+1}</span>
       <span class="top-name" title="${name}">${name}</span>
-      <div class="top-bar-wrap"><div class="top-bar" style="width:${Math.round(val/maxColab*100)}%"></div></div>
+      <div class="top-bar-wrap"><div class="top-bar" style="width:${Math.round(val/max*100)}%"></div></div>
       <span class="top-val">${val}</span>
     </div>`).join('');
-
-  // Top sucursales
-  const bySuc = count(data, 'sucursal');
-  const topSuc = topN(bySuc, 10);
-  const maxSuc = topSuc[0]?.[1] || 1;
-  document.getElementById('top-suc').innerHTML = topSuc.map(([name, val], i) => `
-    <div class="top-item">
-      <span class="top-rank">${i+1}</span>
-      <span class="top-name" title="${name}">${name}</span>
-      <div class="top-bar-wrap"><div class="top-bar" style="width:${Math.round(val/maxSuc*100)}%"></div></div>
-      <span class="top-val">${val}</span>
-    </div>`).join('');
-
-  // Chart fecha (línea)
-  const byFecha = count(data, 'fecha');
-  const fechaEntries = Object.entries(byFecha).sort((a,b)=>a[0].localeCompare(b[0]));
-  renderLine('chart-fecha', fechaEntries.map(e=>e[0]), fechaEntries.map(e=>e[1]));
-
-  // Chart top productos (barras horizontales por piezas)
-  const byProd = sumQty(data, 'code');
-  const prodEntries = topN(byProd, 15);
-  renderHBar('chart-prods', prodEntries.map(e=>e[0]), prodEntries.map(e=>e[1]), '#16a34a');
 }
 
-const COLORS = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#be185d','#4d7c0f','#b45309','#1d4ed8'];
+function renderDash(data) {
+  document.getElementById('d-total').textContent=data.length.toLocaleString('es-MX');
+  document.getElementById('d-pzas').textContent=data.reduce((s,r)=>s+(r.qty||1),0).toLocaleString('es-MX');
+  document.getElementById('d-prods').textContent=new Set(data.map(r=>r.code)).size.toLocaleString('es-MX');
+  document.getElementById('d-emps').textContent=new Set(data.map(r=>r.empleado).filter(Boolean)).size.toLocaleString('es-MX');
 
-function renderLine(id, labels, vals) {
-  if (charts[id]) charts[id].destroy();
-  charts[id] = new Chart(document.getElementById(id), {
-    type: 'line',
-    data: { labels, datasets: [{ data: vals, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,.08)', tension: 0.3, fill: true, pointRadius: 4 }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { font: { size: 11 }, maxRotation: 45 } },
-        y: { beginAtZero: true, ticks: { font: { size: 11 } } }
-      }
-    }
-  });
+  renderTopList('top-colab', topN(countBy(data,'nombre'),10));
+  renderTopList('top-suc', topN(countBy(data,'sucursal'),10));
+
+  const byFecha=countBy(data,'fecha');
+  const fechaE=Object.entries(byFecha).sort((a,b)=>a[0].localeCompare(b[0]));
+  renderChart('chart-fecha','line',fechaE.map(e=>e[0]),fechaE.map(e=>e[1]),'#16a34a');
+
+  const byProd=sumQtyBy(data,'code');
+  const prodE=topN(byProd,15);
+  renderChart('chart-prods','bar',prodE.map(e=>e[0]),prodE.map(e=>e[1]),'#2563eb');
 }
 
-function renderHBar(id, labels, vals, color) {
-  if (charts[id]) charts[id].destroy();
-  charts[id] = new Chart(document.getElementById(id), {
-    type: 'bar',
-    data: { labels, datasets: [{ data: vals, backgroundColor: color || '#2563eb', borderRadius: 3 }] },
-    options: {
-      indexAxis: 'y',
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { beginAtZero: true, ticks: { font: { size: 11 } } },
-        y: { ticks: { font: { size: 11 }, crossAlign: 'far' } }
+function renderChart(id,type,labels,vals,color) {
+  if(dashCharts[id]) dashCharts[id].destroy();
+  const isHBar = type==='bar';
+  dashCharts[id]=new Chart(document.getElementById(id),{
+    type,
+    data:{labels,datasets:[{data:vals,borderColor:color,backgroundColor:type==='line'?color+'22':color,tension:0.3,fill:type==='line',borderRadius:type==='bar'?3:0,pointRadius:type==='line'?4:0}]},
+    options:{
+      indexAxis:isHBar?'y':'x',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{beginAtZero:true,ticks:{font:{size:11},maxRotation:type==='line'?45:0}},
+        y:{ticks:{font:{size:11}}}
       }
     }
   });
