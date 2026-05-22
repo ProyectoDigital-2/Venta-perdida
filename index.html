@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ventas Perdidas — APYMSA</title>
+<title>Ventas Negadas — APYMSA</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -12,7 +12,7 @@
 <style>
   :root{--bg:#e8e8e8;--surface:#fff;--surface2:#f2f2f2;--border:#d8d8d8;--border2:#c4c4c4;--accent:#16a34a;--accent2:#15803d;--text:#111;--muted:#9ca3af;--muted2:#6b7280;--danger:#dc2626;--mono:"IBM Plex Mono",monospace;--display:"Inter",sans-serif}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:var(--display);min-height:100vh;overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font-family:var(--display);min-height:100vh}
   .app{max-width:900px;margin:0 auto;padding:3rem 2rem 5rem}
   header{margin-bottom:3rem;padding-bottom:2rem;border-bottom:1px solid var(--border)}
   .header-top{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem}
@@ -24,14 +24,10 @@
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);padding:5px 10px;border-radius:4px;border:1px solid var(--border2);color:var(--muted2);background:var(--surface)}
   .dot{width:5px;height:5px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-
-  /* Stats */
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:2rem}
   .stat{background:var(--surface);padding:1.25rem 1.5rem}
-  .stat-label{font-size:11px;font-weight:400;color:var(--muted);margin-bottom:4px}
+  .stat-label{font-size:11px;color:var(--muted);margin-bottom:4px}
   .stat-value{font-size:26px;font-weight:600;color:var(--text);line-height:1}
-
-  /* Input card */
   .input-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.75rem;margin-bottom:1rem}
   .input-label{font-size:12px;font-weight:500;color:var(--text);margin-bottom:8px;margin-top:20px}
   textarea{width:100%;min-height:100px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.7;padding:10px 12px;resize:vertical;transition:border-color .2s;outline:none}
@@ -48,12 +44,10 @@
   .btn-export{border-color:var(--accent);color:var(--accent)}
   .btn-export:hover{background:rgba(22,163,74,.06)}
   .btn-clear{border-color:var(--danger);color:var(--danger)}
-  .btn-clear:hover{background:rgba(255,71,71,.08)}
+  .btn-clear:hover{background:rgba(220,38,38,.08)}
   .status-msg{font-size:12px;font-family:var(--mono);padding:5px 12px;border-radius:20px;font-weight:500;margin-left:auto}
   .status-ok{background:rgba(22,163,74,.08);color:var(--accent)}
-  .status-err{background:rgba(255,71,71,.12);color:var(--danger)}
-
-  /* Table */
+  .status-err{background:rgba(220,38,38,.12);color:var(--danger)}
   .table-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:3rem}
   .table-header{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border)}
   .table-title{font-size:13px;font-weight:500;color:var(--text)}
@@ -74,35 +68,31 @@
   .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.2);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
   .divider{height:1px;background:var(--border);margin:20px 0}
-
-  /* Dashboard */
   .dash-section{border-top:2px solid var(--border2);padding-top:2.5rem;margin-top:1rem}
-  .dash-title-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem}
-  .dash-h2{font-size:20px;font-weight:300;letter-spacing:-.01em}
+  .dash-h2{font-size:20px;font-weight:300;letter-spacing:-.01em;margin-bottom:1.5rem}
   .dash-h2 strong{font-weight:600;color:var(--accent)}
   .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem}
   .filters label{font-size:12px;color:var(--muted);font-weight:500}
   select{padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--display);background:var(--surface);color:var(--text);outline:none;cursor:pointer}
   select:focus{border-color:var(--accent)}
   .btn-reset{padding:7px 14px;border:1px solid var(--border2);border-radius:6px;font-size:12px;background:transparent;color:var(--muted);cursor:pointer;font-family:var(--display)}
-  .btn-reset:hover{background:var(--surface2)}
   .dash-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.5rem}
   .dash-stat{background:var(--surface);padding:1rem 1.25rem}
   .dash-stat-label{font-size:11px;color:var(--muted);margin-bottom:4px}
   .dash-stat-value{font-size:22px;font-weight:600;color:var(--text)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1rem}
   .card-title{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
   .chart-wrap{position:relative;width:100%}
   .top-list{display:flex;flex-direction:column;gap:8px}
-  .top-item{display:flex;align-items:center;gap:8px;font-size:13px}
+  .top-item{display:flex;align-items:center;gap:8px}
   .top-rank{font-size:11px;color:var(--muted);min-width:18px;text-align:right;font-family:var(--mono)}
   .top-bar-wrap{flex:1;background:var(--surface2);border-radius:4px;height:6px;overflow:hidden}
   .top-bar{height:100%;background:var(--accent);border-radius:4px}
   .top-name{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
   .top-val{font-size:12px;font-weight:500;min-width:36px;text-align:right;font-family:var(--mono)}
   @media(max-width:700px){
-    .grid2,.grid3{grid-template-columns:1fr}
+    .grid2{grid-template-columns:1fr}
     .dash-stats{grid-template-columns:repeat(2,1fr)}
     .stats{grid-template-columns:1fr 1fr 1fr}
     .stat-value{font-size:20px}
@@ -114,54 +104,44 @@
     table{font-size:12px}
     th,td{padding:8px 10px}
     .input-card{padding:1.25rem}
-    .actions{flex-wrap:wrap}
-    #manual-emp,#manual-code{width:100%!important}
-    #manual-qty{width:80px!important}
-    .btn-primary,button{font-size:13px}
-    .dash-title-row{flex-direction:column}
     .filters{flex-direction:column;align-items:flex-start}
     select{width:100%}
-    header{padding-bottom:1.25rem;margin-bottom:1.5rem}
-    .logo{margin-bottom:1rem}
   }
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- ═══ HEADER ═══ -->
   <header>
-    <div class="logo">APYMSA · Sistema interno</div>
+    <div class="logo">APYMSA &middot; Sistema interno</div>
     <div class="header-top">
       <div>
         <h1><strong>Ventas</strong> <span>Negadas</span></h1>
-        <p class="subtitle">Control de faltantes y registro diario de existencias</p>
+        <p class="subtitle">Control de faltantes</p>
       </div>
       <div class="badge" id="conn-badge"><span class="dot" id="conn-dot"></span> <span id="conn-label">Conectando...</span></div>
     </div>
   </header>
 
-  <!-- ═══ STATS REGISTRO ═══ -->
   <div class="stats">
     <div class="stat"><div class="stat-label">Registros</div><div class="stat-value" id="stat-total">0</div></div>
     <div class="stat"><div class="stat-label">Piezas negadas</div><div class="stat-value" id="stat-pzas">0</div></div>
-    <div class="stat"><div class="stat-label">Productos únicos</div><div class="stat-value" id="stat-unique">0</div></div>
+    <div class="stat"><div class="stat-label">Productos unicos</div><div class="stat-value" id="stat-unique">0</div></div>
   </div>
 
-  <!-- ═══ FORMULARIO ═══ -->
   <div class="input-card">
     <div class="input-label">Captura manual</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <input type="text" id="manual-emp" placeholder="No. Empleado"
-        style="width:130px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
+        style="width:130px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;"
         onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
         onkeydown="if(event.key==='Enter'){document.getElementById('manual-code').focus()}">
-      <input type="text" id="manual-code" placeholder="Código (7 dígitos)" maxlength="7" inputmode="numeric"
-        style="width:150px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
+      <input type="text" id="manual-code" placeholder="Codigo (7 digitos)" maxlength="7" inputmode="numeric"
+        style="width:150px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;"
         onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
         onkeydown="if(event.key==='Enter'){document.getElementById('manual-qty').focus()}">
       <input type="number" id="manual-qty" placeholder="Cant." min="1"
-        style="width:80px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;"
+        style="width:80px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;"
         onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
         onkeydown="if(event.key==='Enter'){addManual()}">
       <button class="btn-primary" onclick="addManual()">Agregar</button>
@@ -171,19 +151,18 @@
 
     <div class="input-label">Pegar texto libre</div>
     <input type="text" id="extract-emp" placeholder="No. Empleado"
-      style="width:160px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;margin-bottom:8px;"
+      style="width:160px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--mono);background:var(--bg);color:var(--text);outline:none;margin-bottom:8px;"
       onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
     <textarea id="msg-input" placeholder="5927889. 50pz&#10;5900239. 200pz&#10;Venta negada por falta de existencia."></textarea>
-    <div class="hint">Formatos: <code>5912209. 100pz</code> &nbsp; <code>5912209 - 50</code> &nbsp; <code>5912209</code> (→ 1 pz)</div>
+    <div class="hint">Formatos: <code>5912209. 100pz</code> &nbsp; <code>5912209 - 50</code> &nbsp; <code>5912209</code> (1 pz por defecto)</div>
 
     <div class="actions" style="margin-top:14px;">
       <button class="btn-primary" id="parse-btn" onclick="extractAndAdd()"><span id="btn-text">Extraer registros</span></button>
-      <button onclick="clearAll2()">Limpiar</button>
+      <button onclick="document.getElementById('msg-input').value=''">Limpiar</button>
       <span id="status-msg" style="display:none"></span>
     </div>
   </div>
 
-  <!-- ═══ TABLA ═══ -->
   <div class="table-card">
     <div class="table-header">
       <span class="table-title">Registros guardados</span>
@@ -193,61 +172,58 @@
       </div>
     </div>
     <table>
-      <thead><tr><th>#</th><th>No. Empleado</th><th>Fecha</th><th>Hora</th><th>Código</th><th>Cantidad</th><th>Origen</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>No. Empleado</th><th>Fecha</th><th>Hora</th><th>Codigo</th><th>Cantidad</th><th>Origen</th><th></th></tr></thead>
       <tbody id="tbody"></tbody>
       <tbody>
         <tr id="ver-mas-row" style="display:none">
           <td colspan="8" style="text-align:center;padding:14px;">
-            <button onclick="verMas()" style="border:1px solid var(--border2);background:var(--surface2);color:var(--text);border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:var(--display);font-weight:500;"><span>Ver más</span></button>
+            <button onclick="verMas()" style="border:1px solid var(--border2);background:var(--surface2);color:var(--text);border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;"><span>Ver mas</span></button>
           </td>
         </tr>
       </tbody>
     </table>
     <div id="empty-state" class="empty-state">
-      <div class="empty-text">Sin registros. Pega un mensaje o captura manualmente.</div>
+      <div class="empty-text">Sin registros. Captura manualmente o pega un mensaje.</div>
     </div>
   </div>
 
-  <!-- ═══ DASHBOARD ═══ -->
   <div class="dash-section">
-    <div class="dash-title-row">
-      <div>
-        <h2 class="dash-h2"><strong>Dashboard</strong> — Análisis</h2>
-      </div>
-    </div>
+    <h2 class="dash-h2"><strong>Dashboard</strong> &mdash; Analisis</h2>
 
     <div class="filters">
       <label>Filtrar por:</label>
       <select id="f-fecha" onchange="applyFilters()"><option value="">Todas las fechas</option></select>
+      <select id="f-producto" onchange="applyFilters()"><option value="">Todos los productos</option></select>
+      <select id="f-colaborador" onchange="applyFilters()"><option value="">Todos los colaboradores</option></select>
       <button class="btn-reset" onclick="resetFilters()">Limpiar filtros</button>
     </div>
 
     <div class="dash-stats">
-      <div class="dash-stat"><div class="dash-stat-label">Registros</div><div class="dash-stat-value" id="d-total">—</div></div>
-      <div class="dash-stat"><div class="dash-stat-label">Piezas negadas</div><div class="dash-stat-value" id="d-pzas">—</div></div>
-      <div class="dash-stat"><div class="dash-stat-label">Productos únicos</div><div class="dash-stat-value" id="d-prods">—</div></div>
-      <div class="dash-stat"><div class="dash-stat-label">Colaboradores activos</div><div class="dash-stat-value" id="d-emps">—</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">Registros</div><div class="dash-stat-value" id="d-total">0</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">Piezas negadas</div><div class="dash-stat-value" id="d-pzas">0</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">Productos unicos</div><div class="dash-stat-value" id="d-prods">0</div></div>
+      <div class="dash-stat"><div class="dash-stat-label">Colaboradores activos</div><div class="dash-stat-value" id="d-emps">0</div></div>
     </div>
 
     <div class="grid2">
       <div class="card">
-        <div class="card-title">Top sucursales</div>
+        <div class="card-title">&#x1F3EA; Top sucursales</div>
         <div class="top-list" id="top-suc"></div>
       </div>
       <div class="card">
-        <div class="card-title">Registros por fecha</div>
-        <div class="chart-wrap" style="height:220px"><canvas id="chart-fecha" role="img" aria-label="Registros por fecha"></canvas></div>
+        <div class="card-title">&#x1F4C5; Registros por fecha</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chart-fecha"></canvas></div>
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:1rem">
-      <div class="card-title">Top colaboradores</div>
+    <div class="card">
+      <div class="card-title">&#x1F9CD;&#x1F3FB;&#x200D;&#x2642;&#xFE0F; Top &mdash; Carga de registros por colaborador</div>
       <div class="top-list" id="top-colab"></div>
     </div>
 
     <div class="card">
-      <div class="card-title">Top 15 — productos más negados (piezas)</div>
-      <div class="chart-wrap" style="height:400px"><canvas id="chart-prods" role="img" aria-label="Top productos por piezas negadas"></canvas></div>
+      <div class="card-title">Top 15 &mdash; Productos mas negados (piezas)</div>
+      <div class="chart-wrap" style="height:400px"><canvas id="chart-prods"></canvas></div>
     </div>
   </div>
 
@@ -268,71 +244,72 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const refRegistros = db.ref('registros');
 
-db.ref('.info/connected').on('value', snap => {
-  const on = snap.val();
-  const dot = document.getElementById('conn-dot');
-  const label = document.getElementById('conn-label');
+db.ref('.info/connected').on('value', function(snap) {
+  var on = snap.val();
+  var dot = document.getElementById('conn-dot');
+  var label = document.getElementById('conn-label');
   if (dot) dot.style.background = on ? 'var(--accent)' : 'var(--danger)';
   if (label) label.textContent = on ? 'En linea' : 'Sin conexion';
 });
 
-let records = [];
-let currentOrigen = '';
-let dashCharts = {};
-const PAGE_SIZE = 50;
-let visibleCount = PAGE_SIZE;
+var records = [];
+var dashCharts = {};
+var PAGE_SIZE = 25;
+var visibleCount = PAGE_SIZE;
 
 function enrich(r) {
-  const emp = String(r.empleado || '').trim();
-  const info = CATALOG[emp] || {};
-  return { ...r, nombre: info.n || ('Emp. ' + emp), sucursal: info.s || 'Sin sucursal' };
+  var emp = String(r.empleado || '').trim();
+  var info = CATALOG[emp] || {};
+  return Object.assign({}, r, {
+    nombre: info.n || ('Emp. ' + emp),
+    sucursal: info.s || 'Sin sucursal'
+  });
 }
 
-refRegistros.on('value', snapshot => {
-  const data = snapshot.val();
-  records = data ? Object.entries(data).map(([id, r]) => ({ ...r, id })).sort((a,b) => (b.ts||0)-(a.ts||0)) : [];
+refRegistros.on('value', function(snapshot) {
+  var data = snapshot.val();
+  records = data ? Object.entries(data).map(function(e) { return Object.assign({}, e[1], {id: e[0]}); }).sort(function(a,b){ return (b.ts||0)-(a.ts||0); }) : [];
   visibleCount = PAGE_SIZE;
   renderTable();
-  populateFechas();
+  populateFilters();
   applyFilters();
 });
 
-// ── Parser ────────────────────────────────────────────────────────────────────
-const RE_CODE     = /^\d{7}$/;
-const RE_QTY_SOLO = /^\d{1,4}$/;
-const RE_QTY_DASH = /^(\d{1,4})\s+[-$]/;
-const NOISE_LINE  = /apymsa|cotizacion|vigencia|vendedor|cliente|subtotal|chicote|acelerador|cargo|bikall|forza|descripcion|importe|faltante|venta perdida|venta negada|por falta|existencia|cedis|rotacion|ajuste|maximo|surtan|thks|enterado|gracias|buena tarde|hay existencia/i;
-const RE_7DIG     = /\d{7}/g;
+// Parser
+var RE_QTY_DASH = /^(\d{1,4})\s+[-$]/;
+var RE_QTY_SOLO = /^\d{1,4}$/;
+var NOISE_LINE  = /apymsa|cotizacion|vigencia|vendedor|cliente|subtotal|chicote|acelerador|cargo|bikall|forza|descripcion|importe|faltante|venta perdida|venta negada|por falta|existencia|cedis|rotacion|ajuste|maximo|surtan|thks|enterado|gracias|buena tarde|hay existencia/i;
 
 function shouldSkip(l) {
-  if (/^\d/.test(l) && !l.includes('/')) return false;
+  if (/^\d/.test(l) && l.indexOf('/') < 0) return false;
   return NOISE_LINE.test(l);
 }
 
 function parseText(raw) {
-  const acc = {}, order = [];
+  var acc = {}, order = [];
   function addItem(code, qty) {
     if (acc[code] === undefined) { acc[code] = 0; order.push(code); }
     acc[code] += qty;
   }
-  const lines = raw.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
+  var lines = raw.split(/[\r\n]+/).map(function(l){ return l.trim(); }).filter(Boolean);
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i];
     if (shouldSkip(l)) continue;
-    const allCodes = l.match(/\d{7}/g);
+    var allCodes = l.match(/\d{7}/g);
     if (!allCodes) continue;
-    for (const code of allCodes) {
-      const after = l.slice(l.indexOf(code) + 7);
-      const mI = after.match(/^\s*[.\-:,]?\s*(\d{1,4})\s*(pz|pzs|piezas?|pcs?|und?)?/i);
+    for (var ci = 0; ci < allCodes.length; ci++) {
+      var code = allCodes[ci];
+      var after = l.slice(l.indexOf(code) + 7);
+      var mI = after.match(/^\s*[.\-:,]?\s*(\d{1,4})\s*(pz|pzs|piezas?|pcs?|und?)?/i);
       if (mI && mI[1]) { addItem(code, +mI[1]); continue; }
-      const mL = after.match(/(\d{1,4})\s*(pz|pzs|piezas?|pcs?|und?)?\s*$/i);
+      var mL = after.match(/(\d{1,4})\s*(pz|pzs|piezas?|pcs?|und?)?\s*$/i);
       if (mL && mL[1]) { addItem(code, +mL[1]); continue; }
-      let found = false;
+      var found = false;
       if (allCodes.length === 1) {
-        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-          const nxt = lines[j];
+        for (var j = i+1; j < Math.min(i+4, lines.length); j++) {
+          var nxt = lines[j];
           if (shouldSkip(nxt)) continue;
-          const mQF = nxt.match(RE_QTY_DASH);
+          var mQF = nxt.match(RE_QTY_DASH);
           if (mQF) { addItem(code, +mQF[1]); found = true; break; }
           if (RE_QTY_SOLO.test(nxt)) { addItem(code, +nxt); found = true; break; }
           if (/\d{7}/.test(nxt)) break;
@@ -341,183 +318,228 @@ function parseText(raw) {
       if (!found) addItem(code, 1);
     }
   }
-  return order.map(code => ({ code, qty: acc[code] }));
+  return order.map(function(code){ return {code: code, qty: acc[code]}; });
 }
 
-// ── Tabla ─────────────────────────────────────────────────────────────────────
+// Table
 function renderTable() {
-  const tbody = document.getElementById('tbody');
-  const empty = document.getElementById('empty-state');
+  var tbody = document.getElementById('tbody');
+  var empty = document.getElementById('empty-state');
   document.getElementById('stat-total').textContent = records.length;
-  document.getElementById('stat-pzas').textContent = records.reduce((s,r) => s + (r.qty||1), 0).toLocaleString('es-MX');
-  document.getElementById('stat-unique').textContent = new Set(records.map(r => r.code)).size;
+  document.getElementById('stat-pzas').textContent = records.reduce(function(s,r){ return s+(r.qty||1); }, 0).toLocaleString('es-MX');
+  document.getElementById('stat-unique').textContent = new Set(records.map(function(r){ return r.code; })).size;
   if (!records.length) { tbody.innerHTML = ''; empty.style.display = 'block'; renderVerMas(); return; }
   empty.style.display = 'none';
-  const visible = records.slice(0, visibleCount);
-  tbody.innerHTML = visible.map((r,i) => `<tr>
-    <td class="row-num">${records.length - i}</td>
-    <td style="font-family:var(--mono);font-size:12px;font-weight:500;">${r.empleado||'—'}</td>
-    <td class="date-cell">${r.fecha}</td>
-    <td class="date-cell">${r.hora}</td>
-    <td class="code-cell">${r.code}</td>
-    <td class="qty-cell">${(r.qty||1).toLocaleString('es-MX')} pz</td>
-    <td style="font-size:12px;color:var(--muted2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.origen||''}">${r.origen||'—'}</td>
-    <td><button class="del-btn" onclick="del('${r.id}')">×</button></td>
-  </tr>`).join('');
+  var visible = records.slice(0, visibleCount);
+  tbody.innerHTML = visible.map(function(r,i) {
+    return '<tr>' +
+      '<td class="row-num">' + (records.length-i) + '</td>' +
+      '<td style="font-family:var(--mono);font-size:12px;font-weight:500;">' + (r.empleado||'—') + '</td>' +
+      '<td class="date-cell">' + (r.fecha||'') + '</td>' +
+      '<td class="date-cell">' + (r.hora||'') + '</td>' +
+      '<td class="code-cell">' + (r.code||'') + '</td>' +
+      '<td class="qty-cell">' + (r.qty||1).toLocaleString('es-MX') + ' pz</td>' +
+      '<td style="font-size:12px;color:var(--muted2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (r.origen||'') + '">' + (r.origen||'—') + '</td>' +
+      '<td><button class="del-btn" onclick="del(\'' + r.id + '\')">&#215;</button></td>' +
+      '</tr>';
+  }).join('');
   renderVerMas();
 }
 
 function renderVerMas() {
-  const el = document.getElementById('ver-mas-row');
+  var el = document.getElementById('ver-mas-row');
   if (!el) return;
-  const remaining = records.length - visibleCount;
+  var remaining = records.length - visibleCount;
   if (remaining <= 0) { el.style.display = 'none'; return; }
   el.style.display = '';
   el.querySelector('span').textContent = 'Ver mas (' + remaining + ' restantes)';
 }
 
 function verMas() { visibleCount += PAGE_SIZE; renderTable(); }
-
 function del(id) { refRegistros.child(id).remove(); }
 
-function clearAll2() { document.getElementById('msg-input').value = ''; }
-
 function clearAll() {
-  const pwd = prompt('Contrasena para borrar todos los registros:');
+  var pwd = prompt('Contrasena para borrar todos los registros:');
   if (pwd === null) return;
-  if (pwd !== 'apymsa2026') return showStatus('Contrasena incorrecta', true);
-  refRegistros.remove().then(() => showStatus('Registros borrados', false));
+  if (pwd !== 'apymsa2026') { showStatus('Contrasena incorrecta', true); return; }
+  refRegistros.remove().then(function(){ showStatus('Registros borrados', false); });
 }
 
 function showStatus(msg, err) {
-  const el = document.getElementById('status-msg');
+  var el = document.getElementById('status-msg');
   el.style.display = 'inline-block';
   el.className = 'status-msg ' + (err ? 'status-err' : 'status-ok');
   el.textContent = msg;
-  setTimeout(() => { el.style.display = 'none'; }, 3500);
+  setTimeout(function(){ el.style.display = 'none'; }, 3500);
 }
 
 function setLoading(on, label) {
-  const btn = document.getElementById('parse-btn');
-  const txt = document.getElementById('btn-text');
+  var btn = document.getElementById('parse-btn');
+  var txt = document.getElementById('btn-text');
   btn.disabled = on;
   txt.innerHTML = on ? '<span class="spinner"></span> ' + (label||'Procesando...') : 'Extraer registros';
 }
 
 function mergeRecord(code, qty, fecha, hora, origen, empleado) {
-  refRegistros.push({ fecha, hora, code, qty, origen: origen||'', empleado: empleado||'', ts: Date.now() });
+  refRegistros.push({ fecha: fecha, hora: hora, code: code, qty: qty, origen: origen||'', empleado: empleado||'', ts: Date.now() });
 }
 
 function addManual() {
-  const empEl  = document.getElementById('manual-emp');
-  const codeEl = document.getElementById('manual-code');
-  const qtyEl  = document.getElementById('manual-qty');
-  const empleado = empEl.value.trim();
-  const code = codeEl.value.trim();
-  const qty = parseInt(qtyEl.value) || 1;
-  if (!empleado) { empEl.style.borderColor='var(--danger)'; setTimeout(()=>empEl.style.borderColor='var(--border)',1500); return showStatus('Ingresa el numero de empleado',true); }
-  if (!/^\d{7}$/.test(code)) { codeEl.style.borderColor='var(--danger)'; setTimeout(()=>codeEl.style.borderColor='var(--border)',1500); return showStatus('Codigo debe tener 7 digitos',true); }
-  const now = new Date();
+  var empEl = document.getElementById('manual-emp');
+  var codeEl = document.getElementById('manual-code');
+  var qtyEl = document.getElementById('manual-qty');
+  var empleado = empEl.value.trim();
+  var code = codeEl.value.trim();
+  var qty = parseInt(qtyEl.value) || 1;
+  if (!empleado) { empEl.style.borderColor='var(--danger)'; setTimeout(function(){empEl.style.borderColor='var(--border)';},1500); showStatus('Ingresa el numero de empleado',true); return; }
+  if (!/^\d{7}$/.test(code)) { codeEl.style.borderColor='var(--danger)'; setTimeout(function(){codeEl.style.borderColor='var(--border)';},1500); showStatus('Codigo debe tener 7 digitos',true); return; }
+  var now = new Date();
   mergeRecord(code, qty, now.toLocaleDateString('es-MX'), now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}), '', empleado);
   showStatus(code + ' — ' + qty + ' pz agregado', false);
   codeEl.value = ''; qtyEl.value = ''; codeEl.focus();
 }
 
-async function extractAndAdd() {
-  const empEl = document.getElementById('extract-emp');
-  const empleado = empEl.value.trim();
-  const text = document.getElementById('msg-input').value.trim();
-  if (!empleado) { empEl.style.borderColor='var(--danger)'; setTimeout(()=>empEl.style.borderColor='var(--border)',1500); return showStatus('Ingresa el numero de empleado',true); }
-  if (!text) return showStatus('Pega un mensaje de texto', true);
-  const now = new Date();
-  const fecha = now.toLocaleDateString('es-MX');
-  const hora  = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+function extractAndAdd() {
+  var empEl = document.getElementById('extract-emp');
+  var empleado = empEl.value.trim();
+  var text = document.getElementById('msg-input').value.trim();
+  if (!empleado) { empEl.style.borderColor='var(--danger)'; setTimeout(function(){empEl.style.borderColor='var(--border)';},1500); showStatus('Ingresa el numero de empleado',true); return; }
+  if (!text) { showStatus('Pega un mensaje de texto', true); return; }
+  var now = new Date();
+  var fecha = now.toLocaleDateString('es-MX');
+  var hora = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
   setLoading(true, 'Extrayendo...');
-  const items = parseText(text);
+  var items = parseText(text);
   setLoading(false);
-  if (!items.length) return showStatus('No se encontraron codigos.', true);
-  items.forEach(({code, qty}) => mergeRecord(String(code), +qty, fecha, hora, '', empleado));
+  if (!items.length) { showStatus('No se encontraron codigos.', true); return; }
+  items.forEach(function(item){ mergeRecord(String(item.code), +item.qty, fecha, hora, '', empleado); });
   showStatus(items.length + ' codigo' + (items.length!==1?'s':'') + ' procesado' + (items.length!==1?'s':''), false);
   document.getElementById('msg-input').value = '';
 }
 
 function exportExcel() {
-  if (!records.length) return showStatus('Sin datos para exportar', true);
-  const pwd = prompt('Contrasena para exportar:');
+  if (!records.length) { showStatus('Sin datos para exportar', true); return; }
+  var pwd = prompt('Contrasena para exportar:');
   if (pwd === null) return;
-  if (pwd !== 'apymsa2026') return showStatus('Contrasena incorrecta', true);
-  const wb = XLSX.utils.book_new();
-  const detail = records.map((r,i) => ({'No.':i+1,'No. Empleado':r.empleado||'','Fecha':r.fecha,'Hora':r.hora,'Codigo':r.code,'Cantidad (pz)':r.qty,'Origen':r.origen||''}));
-  const ws = XLSX.utils.json_to_sheet(detail);
+  if (pwd !== 'apymsa2026') { showStatus('Contrasena incorrecta', true); return; }
+  var wb = XLSX.utils.book_new();
+  var detail = records.map(function(r,i){
+    return {'No.':i+1,'No. Empleado':r.empleado||'','Fecha':r.fecha,'Hora':r.hora,'Codigo':r.code,'Cantidad (pz)':r.qty,'Origen':r.origen||''};
+  });
+  var ws = XLSX.utils.json_to_sheet(detail);
   ws['!cols'] = [{wch:5},{wch:14},{wch:12},{wch:8},{wch:12},{wch:13},{wch:35}];
   XLSX.utils.book_append_sheet(wb, ws, 'Ventas Negadas');
   XLSX.writeFile(wb, 'ventas_negadas_' + new Date().toLocaleDateString('es-MX').replace(/\//g,'-') + '.xlsx');
   showStatus('Excel descargado', false);
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
-function populateFechas() {
-  const fechas = [...new Set(records.map(r => r.fecha).filter(Boolean))].sort().reverse();
-  const sel = document.getElementById('f-fecha');
-  const cur = sel.value;
-  while (sel.options.length > 1) sel.remove(1);
-  fechas.forEach(v => sel.add(new Option(v, v)));
-  if (fechas.includes(cur)) sel.value = cur;
+// Dashboard
+function populateFilters() {
+  var fechas = [...new Set(records.map(function(r){ return r.fecha; }).filter(Boolean))].sort().reverse();
+  var selF = document.getElementById('f-fecha');
+  var curF = selF.value;
+  while (selF.options.length > 1) selF.remove(1);
+  fechas.forEach(function(v){ selF.add(new Option(v,v)); });
+  if (fechas.includes(curF)) selF.value = curF;
+
+  var prods = [...new Set(records.map(function(r){ return r.code; }).filter(Boolean))].sort();
+  var selP = document.getElementById('f-producto');
+  var curP = selP.value;
+  while (selP.options.length > 1) selP.remove(1);
+  prods.forEach(function(v){ selP.add(new Option(v,v)); });
+  if (prods.includes(curP)) selP.value = curP;
+
+  var colabs = [...new Set(records.map(function(r){ return r.empleado; }).filter(Boolean))].sort(function(a,b){
+    var na = (CATALOG[a] && CATALOG[a].n) || a;
+    var nb = (CATALOG[b] && CATALOG[b].n) || b;
+    return na.localeCompare(nb);
+  });
+  var selC = document.getElementById('f-colaborador');
+  var curC = selC.value;
+  while (selC.options.length > 1) selC.remove(1);
+  colabs.forEach(function(v){
+    var nombre = (CATALOG[v] && CATALOG[v].n) || ('Emp. ' + v);
+    selC.add(new Option(nombre + ' (' + v + ')', v));
+  });
+  if (colabs.includes(curC)) selC.value = curC;
 }
 
 function applyFilters() {
-  const fec = document.getElementById('f-fecha').value;
-  let data = records.map(enrich);
-  if (fec) data = data.filter(r => r.fecha === fec);
+  var fec = document.getElementById('f-fecha').value;
+  var prod = document.getElementById('f-producto').value;
+  var data = records.map(enrich);
+  var colab = document.getElementById('f-colaborador').value;
+  if (fec)   data = data.filter(function(r){ return r.fecha === fec; });
+  if (prod)  data = data.filter(function(r){ return r.code === prod; });
+  if (colab) data = data.filter(function(r){ return r.empleado === colab; });
   renderDash(data);
 }
 
-function resetFilters() { document.getElementById('f-fecha').value = ''; applyFilters(); }
+function resetFilters() {
+  document.getElementById('f-fecha').value = '';
+  document.getElementById('f-producto').value = '';
+  document.getElementById('f-colaborador').value = '';
+  applyFilters();
+}
 
 function countBy(data, key) {
-  const m = {};
-  data.forEach(r => { const k = r[key]||'Sin datos'; m[k] = (m[k]||0) + 1; });
+  var m = {};
+  data.forEach(function(r){ var k = r[key]||'Sin datos'; m[k] = (m[k]||0)+1; });
   return m;
 }
 function sumQtyBy(data, key) {
-  const m = {};
-  data.forEach(r => { const k = r[key]||'Sin datos'; m[k] = (m[k]||0) + (r.qty||1); });
+  var m = {};
+  data.forEach(function(r){ var k = r[key]||'Sin datos'; m[k] = (m[k]||0)+(r.qty||1); });
   return m;
 }
-function topN(obj, n) { return Object.entries(obj).sort((a,b) => b[1]-a[1]).slice(0, n); }
+function topN(obj, n) {
+  return Object.entries(obj).sort(function(a,b){ return b[1]-a[1]; }).slice(0,n);
+}
 
-function renderTopList(elId, entries) {
-  const max = entries[0]?.[1] || 1;
-  document.getElementById(elId).innerHTML = entries.map(([name,val],i) =>
-    '<div class="top-item">' +
-    '<span class="top-rank">' + (i+1) + '</span>' +
-    '<span class="top-name" title="' + name + '">' + name + '</span>' +
-    '<div class="top-bar-wrap"><div class="top-bar" style="width:' + Math.round(val/max*100) + '%"></div></div>' +
-    '<span class="top-val">' + val + '</span>' +
-    '</div>'
-  ).join('');
+function renderTopList(elId, entries, icon) {
+  var max = entries[0] ? entries[0][1] : 1;
+  var ic = icon ? '<span style="margin-right:4px;">' + icon + '</span>' : '';
+  document.getElementById(elId).innerHTML = entries.map(function(e, i) {
+    return '<div class="top-item">' +
+      '<span class="top-rank">' + (i+1) + '</span>' +
+      ic +
+      '<span class="top-name" title="' + e[0] + '">' + e[0] + '</span>' +
+      '<div class="top-bar-wrap"><div class="top-bar" style="width:' + Math.round(e[1]/max*100) + '%"></div></div>' +
+      '<span class="top-val">' + e[1] + '</span>' +
+      '</div>';
+  }).join('');
 }
 
 function renderDash(data) {
   document.getElementById('d-total').textContent = data.length.toLocaleString('es-MX');
-  document.getElementById('d-pzas').textContent = data.reduce((s,r) => s+(r.qty||1), 0).toLocaleString('es-MX');
-  document.getElementById('d-prods').textContent = new Set(data.map(r => r.code)).size.toLocaleString('es-MX');
-  document.getElementById('d-emps').textContent = new Set(data.map(r => r.empleado).filter(Boolean)).size.toLocaleString('es-MX');
-  renderTopList('top-colab', topN(countBy(data,'nombre'), 10));
-  renderTopList('top-suc', topN(countBy(data.filter(r=>r.sucursal!=='Sin sucursal'),'sucursal'), 10));
-  const byFecha = countBy(data, 'fecha');
-  const fechaE = Object.entries(byFecha).sort((a,b) => a[0].localeCompare(b[0]));
-  renderChart('chart-fecha', 'line', fechaE.map(e=>e[0]), fechaE.map(e=>e[1]), '#16a34a');
-  const byProd = sumQtyBy(data, 'code');
-  const prodE = topN(byProd, 15);
-  renderChart('chart-prods', 'bar', prodE.map(e=>e[0]), prodE.map(e=>e[1]), '#2563eb');
+  document.getElementById('d-pzas').textContent = data.reduce(function(s,r){ return s+(r.qty||1); }, 0).toLocaleString('es-MX');
+  document.getElementById('d-prods').textContent = new Set(data.map(function(r){ return r.code; })).size.toLocaleString('es-MX');
+  document.getElementById('d-emps').textContent = new Set(data.map(function(r){ return r.empleado; }).filter(Boolean)).size.toLocaleString('es-MX');
+
+  renderTopList('top-suc', topN(countBy(data.filter(function(r){ return r.sucursal !== 'Sin sucursal'; }), 'sucursal'), 10));
+  renderTopList('top-colab', topN(countBy(data,'nombre'), 10), '&#x1F9CD;&#x1F3FB;&#x200D;&#x2642;&#xFE0F;');
+
+  var byFecha = countBy(data, 'fecha');
+  var fechaE = Object.entries(byFecha).sort(function(a,b){
+    // Parse d/m/yyyy format for correct chronological sort
+    function toDate(s) {
+      var p = s.split('/');
+      return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]) : new Date(0);
+    }
+    return toDate(a[0]) - toDate(b[0]);
+  });
+  renderChart('chart-fecha', 'line', fechaE.map(function(e){ return e[0]; }), fechaE.map(function(e){ return e[1]; }), '#16a34a');
+
+  var byProd = sumQtyBy(data, 'code');
+  var prodE = topN(byProd, 15);
+  renderChart('chart-prods', 'bar', prodE.map(function(e){ return e[0]; }), prodE.map(function(e){ return e[1]; }), '#2563eb');
 }
 
 function renderChart(id, type, labels, vals, color) {
   if (dashCharts[id]) dashCharts[id].destroy();
   dashCharts[id] = new Chart(document.getElementById(id), {
-    type,
-    data: { labels, datasets: [{ data: vals, borderColor: color, backgroundColor: type==='line' ? color+'22' : color, tension: 0.3, fill: type==='line', borderRadius: type==='bar' ? 3 : 0, pointRadius: type==='line' ? 4 : 0 }] },
+    type: type,
+    data: { labels: labels, datasets: [{ data: vals, borderColor: color, backgroundColor: type==='line' ? color+'22' : color, tension: 0.3, fill: type==='line', borderRadius: type==='bar' ? 3 : 0, pointRadius: type==='line' ? 4 : 0 }] },
     options: {
       indexAxis: type==='bar' ? 'y' : 'x',
       responsive: true, maintainAspectRatio: false,
