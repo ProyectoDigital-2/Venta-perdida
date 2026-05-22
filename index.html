@@ -238,9 +238,14 @@
       <div class="dash-stat"><div class="dash-stat-label">Colaboradores activos</div><div class="dash-stat-value" id="d-emps">0</div></div>
     </div>
 
+    <div class="card">
+      <div class="card-title">&#x1F9CD;&#x1F3FB;&#x200D;&#x2642;&#xFE0F; Top &mdash; Carga de registros por colaborador</div>
+      <div class="top-list" id="top-colab-top"></div>
+    </div>
+
     <div class="grid2">
       <div class="card">
-        <div class="card-title">&#x1F3EA; Top sucursales</div>
+        <div class="card-title">&#x1F3EA; Top # registros por sucursal</div>
         <div class="top-list" id="top-suc"></div>
       </div>
       <div class="card">
@@ -250,8 +255,8 @@
     </div>
 
     <div class="card">
-      <div class="card-title">&#x1F9CD;&#x1F3FB;&#x200D;&#x2642;&#xFE0F; Top &mdash; Carga de registros por colaborador</div>
-      <div class="top-list" id="top-colab"></div>
+      <div class="card-title">&#x1F3EA; Piezas negadas por sucursal</div>
+      <div class="chart-wrap" style="height:350px"><canvas id="chart-suc-pzas"></canvas></div>
     </div>
 
     <div class="card">
@@ -605,7 +610,7 @@ function renderDash(data) {
   document.getElementById('d-emps').textContent = new Set(data.map(function(r){ return r.empleado; }).filter(Boolean)).size.toLocaleString('es-MX');
 
   renderTopList('top-suc', topN(countBy(data.filter(function(r){ return r.sucursal !== 'Sin sucursal'; }), 'sucursal'), 10));
-  renderTopList('top-colab', topN(countBy(data,'nombre'), 10), '&#x1F9CD;&#x1F3FB;&#x200D;&#x2642;&#xFE0F;');
+  renderTopList('top-colab-top', topN(countBy(data,'nombre'), 10), '&#x1F9CD;&#x1F3FB;&#x200D;&#x2642;&#xFE0F;');
 
   var byFecha = countBy(data, 'fecha');
   var fechaE = Object.entries(byFecha).sort(function(a,b){
@@ -621,6 +626,27 @@ function renderDash(data) {
   var byProd = sumQtyBy(data, 'code');
   var prodE = topN(byProd, 15);
   renderChart('chart-prods', 'bar', prodE.map(function(e){ return e[0]; }), prodE.map(function(e){ return e[1]; }), '#2563eb');
+
+  // Piezas negadas por sucursal (vertical bars)
+  var bySucPzas = sumQtyBy(data.filter(function(r){ return r.sucursal !== 'Sin sucursal'; }), 'sucursal');
+  var sucPzasE = topN(bySucPzas, 20);
+  renderChartV('chart-suc-pzas', sucPzasE.map(function(e){ return e[0]; }), sucPzasE.map(function(e){ return e[1]; }), '#16a34a');
+}
+
+function renderChartV(id, labels, vals, color) {
+  if (dashCharts[id]) dashCharts[id].destroy();
+  dashCharts[id] = new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: vals, backgroundColor: color, borderRadius: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 30 } },
+        y: { beginAtZero: true, ticks: { font: { size: 11 } }, title: { display: true, text: 'Piezas', font: { size: 11 } } }
+      }
+    }
+  });
 }
 
 function renderChart(id, type, labels, vals, color) {
