@@ -91,6 +91,19 @@
   .top-bar{height:100%;background:var(--accent);border-radius:4px}
   .top-name{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
   .top-val{font-size:12px;font-weight:500;min-width:36px;text-align:right;font-family:var(--mono)}
+  .search-select{position:relative;min-width:200px}
+  .ss-input-wrap{display:flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);cursor:pointer;user-select:none;white-space:nowrap}
+  .ss-input-wrap:hover{border-color:var(--border2)}
+  .ss-icon{font-size:12px;color:var(--muted)}
+  .ss-display{flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;max-width:160px}
+  .ss-arrow{font-size:10px;color:var(--muted)}
+  .ss-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:100;background:var(--surface);border:1px solid var(--border2);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);min-width:220px;max-width:300px}
+  .ss-dropdown.open{display:block}
+  .ss-search{width:100%;padding:8px 12px;border:none;border-bottom:1px solid var(--border);border-radius:8px 8px 0 0;font-size:13px;font-family:var(--display);outline:none;background:var(--bg)}
+  .ss-options{max-height:200px;overflow-y:auto}
+  .ss-opt{padding:8px 12px;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ss-opt:hover{background:var(--surface2)}
+  .ss-opt.selected{background:rgba(22,163,74,.08);color:var(--accent);font-weight:500}
   @media(max-width:700px){
     .grid2{grid-template-columns:1fr}
     .dash-stats{grid-template-columns:repeat(2,1fr)}
@@ -193,8 +206,28 @@
     <div class="filters">
       <label>Filtrar por:</label>
       <select id="f-fecha" onchange="applyFilters()"><option value="">Todas las fechas</option></select>
-      <select id="f-producto" onchange="applyFilters()"><option value="">Todos los productos</option></select>
-      <select id="f-colaborador" onchange="applyFilters()"><option value="">Todos los colaboradores</option></select>
+      <div class="search-select" id="ss-producto">
+        <div class="ss-input-wrap" onclick="toggleDropdown('ss-producto')">
+          <span class="ss-icon">&#128269;</span>
+          <span class="ss-display" id="ss-producto-display">Todos los productos</span>
+          <span class="ss-arrow">&#8964;</span>
+        </div>
+        <div class="ss-dropdown" id="ss-producto-drop">
+          <input class="ss-search" type="text" placeholder="Buscar producto..." oninput="filterDropdown('ss-producto',this.value)">
+          <div class="ss-options" id="ss-producto-opts"></div>
+        </div>
+      </div>
+      <div class="search-select" id="ss-colaborador">
+        <div class="ss-input-wrap" onclick="toggleDropdown('ss-colaborador')">
+          <span class="ss-icon">&#128269;</span>
+          <span class="ss-display" id="ss-colaborador-display">Todos los colaboradores</span>
+          <span class="ss-arrow">&#8964;</span>
+        </div>
+        <div class="ss-dropdown" id="ss-colaborador-drop">
+          <input class="ss-search" type="text" placeholder="Buscar colaborador..." oninput="filterDropdown('ss-colaborador',this.value)">
+          <div class="ss-options" id="ss-colaborador-opts"></div>
+        </div>
+      </div>
       <button class="btn-reset" onclick="resetFilters()">Limpiar filtros</button>
     </div>
 
@@ -433,6 +466,67 @@ function exportExcel() {
   showStatus('Excel descargado', false);
 }
 
+// Searchable select
+var ssValues = {};
+var ssAllOptions = {};
+
+function renderSsOptions(id) {
+  var opts = ssAllOptions[id] || [];
+  var cur = ssValues[id] || '';
+  var container = document.getElementById(id + '-opts');
+  var defaultLabel = id === 'ss-producto' ? 'Todos los productos' : 'Todos los colaboradores';
+  var html = '<div class="ss-opt' + (!cur ? ' selected' : '') + '" data-value="" data-id="' + id + '" onclick="ssSelectEl(this)">' + defaultLabel + '</div>';
+  html += opts.map(function(o) {
+    var safe = o.label.replace(/"/g, '&quot;');
+    return '<div class="ss-opt' + (o.value === cur ? ' selected' : '') + '" data-value="' + o.value + '" data-label="' + safe + '" data-id="' + id + '" onclick="ssSelectEl(this)">' + o.label + '</div>';
+  }).join('');
+  container.innerHTML = html;
+}
+
+function filterDropdown(id, query) {
+  var opts = ssAllOptions[id] || [];
+  var q = query.toLowerCase();
+  var filtered = q ? opts.filter(function(o) { return o.label.toLowerCase().indexOf(q) >= 0; }) : opts;
+  var cur = ssValues[id] || '';
+  var container = document.getElementById(id + '-opts');
+  container.innerHTML = filtered.map(function(o) {
+    var safe = o.label.replace(/"/g, '&quot;');
+    return '<div class="ss-opt' + (o.value === cur ? ' selected' : '') + '" data-value="' + o.value + '" data-label="' + safe + '" data-id="' + id + '" onclick="ssSelectEl(this)">' + o.label + '</div>';
+  }).join('');
+}
+
+function ssSelectEl(el) {
+  var id = el.getAttribute('data-id');
+  var value = el.getAttribute('data-value') || '';
+  var label = el.getAttribute('data-label') || el.textContent;
+  ssValues[id] = value;
+  var disp = document.getElementById(id + '-display');
+  if (disp) disp.textContent = label;
+  closeAllDropdowns();
+  renderSsOptions(id);
+  applyFilters();
+}
+
+function toggleDropdown(id) {
+  var drop = document.getElementById(id + '-drop');
+  var isOpen = drop.classList.contains('open');
+  closeAllDropdowns();
+  if (!isOpen) {
+    drop.classList.add('open');
+    var inp = drop.querySelector('.ss-search');
+    if (inp) { inp.value = ''; filterDropdown(id, ''); inp.focus(); }
+  }
+}
+
+function closeAllDropdowns() {
+  var drops = document.querySelectorAll('.ss-dropdown');
+  for (var i = 0; i < drops.length; i++) drops[i].classList.remove('open');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.search-select')) closeAllDropdowns();
+});
+
 // Dashboard
 function populateFilters() {
   var fechas = [...new Set(records.map(function(r){ return r.fecha; }).filter(Boolean))].sort().reverse();
@@ -443,32 +537,26 @@ function populateFilters() {
   if (fechas.includes(curF)) selF.value = curF;
 
   var prods = [...new Set(records.map(function(r){ return r.code; }).filter(Boolean))].sort();
-  var selP = document.getElementById('f-producto');
-  var curP = selP.value;
-  while (selP.options.length > 1) selP.remove(1);
-  prods.forEach(function(v){ selP.add(new Option(v,v)); });
-  if (prods.includes(curP)) selP.value = curP;
+  ssAllOptions['ss-producto'] = prods.map(function(v){ return {value:v, label:v}; });
+  renderSsOptions('ss-producto');
 
   var colabs = [...new Set(records.map(function(r){ return r.empleado; }).filter(Boolean))].sort(function(a,b){
     var na = (CATALOG[a] && CATALOG[a].n) || a;
     var nb = (CATALOG[b] && CATALOG[b].n) || b;
     return na.localeCompare(nb);
   });
-  var selC = document.getElementById('f-colaborador');
-  var curC = selC.value;
-  while (selC.options.length > 1) selC.remove(1);
-  colabs.forEach(function(v){
+  ssAllOptions['ss-colaborador'] = colabs.map(function(v){
     var nombre = (CATALOG[v] && CATALOG[v].n) || ('Emp. ' + v);
-    selC.add(new Option(nombre + ' (' + v + ')', v));
+    return {value:v, label: nombre + ' (' + v + ')'};
   });
-  if (colabs.includes(curC)) selC.value = curC;
+  renderSsOptions('ss-colaborador');
 }
 
 function applyFilters() {
   var fec = document.getElementById('f-fecha').value;
-  var prod = document.getElementById('f-producto').value;
   var data = records.map(enrich);
-  var colab = document.getElementById('f-colaborador').value;
+  var prod  = ssValues['ss-producto'] || '';
+  var colab = ssValues['ss-colaborador'] || '';
   if (fec)   data = data.filter(function(r){ return r.fecha === fec; });
   if (prod)  data = data.filter(function(r){ return r.code === prod; });
   if (colab) data = data.filter(function(r){ return r.empleado === colab; });
@@ -477,8 +565,8 @@ function applyFilters() {
 
 function resetFilters() {
   document.getElementById('f-fecha').value = '';
-  document.getElementById('f-producto').value = '';
-  document.getElementById('f-colaborador').value = '';
+  ssValues['ss-producto']=''; document.getElementById('ss-producto-display').textContent='Todos los productos'; renderSsOptions('ss-producto');
+  ssValues['ss-colaborador']=''; document.getElementById('ss-colaborador-display').textContent='Todos los colaboradores'; renderSsOptions('ss-colaborador');
   applyFilters();
 }
 
