@@ -181,11 +181,12 @@
       <span class="table-title">Registros guardados</span>
       <div class="table-actions">
         <button class="btn-export" onclick="exportExcel()">Exportar Excel</button>
+        <button class="btn-clear" id="btn-bulk-delete" onclick="bulkDelete()" style="display:none">Borrar seleccionados</button>
         <button class="btn-clear" onclick="clearAll()">Borrar todo</button>
       </div>
     </div>
     <table>
-      <thead><tr><th>#</th><th>No. Empleado</th><th>Fecha</th><th>Hora</th><th>Codigo</th><th>Cantidad</th><th>Origen</th><th></th></tr></thead>
+      <thead><tr><th style="width:30px;text-align:center;"><input type="checkbox" id="chk-all" onchange="toggleSelectAll(this)"></th><th>#</th><th>No. Empleado</th><th>Fecha</th><th>Hora</th><th>Codigo</th><th>Cantidad</th><th>Origen</th></tr></thead>
       <tbody id="tbody"></tbody>
       <tbody>
         <tr id="ver-mas-row" style="display:none">
@@ -206,6 +207,8 @@
     <div class="filters">
       <label>Filtrar por:</label>
       <select id="f-fecha" onchange="applyFilters()"><option value="">Todas las fechas</option></select>
+      <select id="f-mes" onchange="applyFilters()"><option value="">Todos los meses</option></select>
+      <select id="f-anio" onchange="applyFilters()"><option value="">Todos los años</option></select>
       <div class="search-select" id="ss-producto">
         <div class="ss-input-wrap" onclick="toggleDropdown('ss-producto')">
           <span class="ss-icon">&#128269;</span>
@@ -294,6 +297,29 @@ var records = [];
 var dashCharts = {};
 var PAGE_SIZE = 25;
 var visibleCount = PAGE_SIZE;
+var selectedIds = new Set();
+
+// Fecha SIEMPRE en formato dd/mm/aa (no depende del locale del navegador/SO)
+function fmtFecha(d) {
+  var dd = String(d.getDate()).padStart(2,'0');
+  var mm = String(d.getMonth()+1).padStart(2,'0');
+  var yy = String(d.getFullYear()).slice(-2);
+  return dd + '/' + mm + '/' + yy;
+}
+function parseFechaParts(str) {
+  if (!str) return null;
+  var p = str.split('/');
+  if (p.length !== 3) return null;
+  var d = +p[0], m = +p[1], y = +p[2];
+  if (!d || !m || !y) return null;
+  if (p[2].length === 2) y = 2000 + y;
+  // Fechas antiguas guardadas en formato americano (mm/dd) antes de este cambio:
+  // si el "mes" es invalido (>12) pero el "dia" si es un mes valido, se intercambian.
+  if (m > 12 && d >= 1 && d <= 12) { var tmp = d; d = m; m = tmp; }
+  if (m < 1 || m > 12) return null;
+  return {d:d, m:m, y:y};
+}
+var MESES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 function enrich(r) {
   var emp = String(r.empleado || '').trim();
@@ -309,7 +335,6 @@ refRegistros.on('value', function(snapshot) {
   records = data ? Object.entries(data).map(function(e) { return Object.assign({}, e[1], {id: e[0]}); }).sort(function(a,b){ return (b.ts||0)-(a.ts||0); }) : [];
   visibleCount = PAGE_SIZE;
   renderTable();
-  populateFilters();
   applyFilters();
 });
 
@@ -366,11 +391,26 @@ function renderTable() {
   document.getElementById('stat-total').textContent = records.length;
   document.getElementById('stat-pzas').textContent = records.reduce(function(s,r){ return s+(r.qty||1); }, 0).toLocaleString('es-MX');
   document.getElementById('stat-unique').textContent = new Set(records.map(function(r){ return r.code; })).size;
-  if (!records.length) { tbody.innerHTML = ''; empty.style.display = 'block'; renderVerMas(); return; }
+
+  // Quitar de la seleccion los ids que ya no existen (borrados desde otro lado)
+  var idSet = new Set(records.map(function(r){ return r.id; }));
+  selectedIds = new Set(Array.from(selectedIds).filter(function(id){ return idSet.has(id); }));
+  updateBulkDeleteBtn();
+
+  if (!records.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    var chkAllEmpty = document.getElementById('chk-all');
+    if (chkAllEmpty) chkAllEmpty.checked = false;
+    renderVerMas();
+    return;
+  }
   empty.style.display = 'none';
   var visible = records.slice(0, visibleCount);
   tbody.innerHTML = visible.map(function(r,i) {
+    var checked = selectedIds.has(r.id) ? 'checked' : '';
     return '<tr>' +
+      '<td style="text-align:center;"><input type="checkbox" class="row-chk" data-id="' + r.id + '" ' + checked + ' onchange="toggleRowSelect(this)"></td>' +
       '<td class="row-num">' + (records.length-i) + '</td>' +
       '<td style="font-family:var(--mono);font-size:12px;font-weight:500;">' + (r.empleado||'—') + '</td>' +
       '<td class="date-cell">' + (r.fecha||'') + '</td>' +
@@ -378,10 +418,62 @@ function renderTable() {
       '<td class="code-cell">' + (r.code||'') + '</td>' +
       '<td class="qty-cell">' + (r.qty||1).toLocaleString('es-MX') + ' pz</td>' +
       '<td style="font-size:12px;color:var(--muted2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (r.origen||'') + '">' + (r.origen||'—') + '</td>' +
-      '<td><button class="del-btn" onclick="del(\'' + r.id + '\')">&#215;</button></td>' +
       '</tr>';
   }).join('');
+
+  var chkAll = document.getElementById('chk-all');
+  if (chkAll) {
+    var visibleIds = visible.map(function(r){ return r.id; });
+    chkAll.checked = visibleIds.length > 0 && visibleIds.every(function(id){ return selectedIds.has(id); });
+  }
   renderVerMas();
+}
+
+function toggleRowSelect(el) {
+  var id = el.getAttribute('data-id');
+  if (el.checked) selectedIds.add(id); else selectedIds.delete(id);
+  var chkAll = document.getElementById('chk-all');
+  if (chkAll && !el.checked) chkAll.checked = false;
+  updateBulkDeleteBtn();
+}
+
+function toggleSelectAll(el) {
+  var visible = records.slice(0, visibleCount);
+  if (el.checked) {
+    visible.forEach(function(r){ selectedIds.add(r.id); });
+  } else {
+    visible.forEach(function(r){ selectedIds.delete(r.id); });
+  }
+  renderTable();
+}
+
+function updateBulkDeleteBtn() {
+  var btn = document.getElementById('btn-bulk-delete');
+  if (!btn) return;
+  var n = selectedIds.size;
+  if (n > 0) {
+    btn.style.display = 'inline-flex';
+    btn.textContent = 'Borrar seleccionados (' + n + ')';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function bulkDelete() {
+  if (!selectedIds.size) return;
+  var n = selectedIds.size;
+  var pwd = prompt('Contrasena para borrar ' + n + ' registro(s) seleccionado(s):');
+  if (pwd === null) return;
+  if (pwd !== 'Apymsa2026-2') { showStatus('Contrasena incorrecta', true); return; }
+  var updates = {};
+  selectedIds.forEach(function(id){ updates[id] = null; });
+  refRegistros.update(updates).then(function(){
+    showStatus(n + ' registro(s) eliminado(s)', false);
+    selectedIds.clear();
+    updateBulkDeleteBtn();
+  }).catch(function(){
+    showStatus('Error al borrar', true);
+  });
 }
 
 function renderVerMas() {
@@ -394,13 +486,16 @@ function renderVerMas() {
 }
 
 function verMas() { visibleCount += PAGE_SIZE; renderTable(); }
-function del(id) { refRegistros.child(id).remove(); }
 
 function clearAll() {
-  var pwd = prompt('Contrasena para borrar todos los registros:');
+  var pwd = prompt('Contrasena para borrar TODOS los registros:');
   if (pwd === null) return;
-  if (pwd !== 'apymsa2026') { showStatus('Contrasena incorrecta', true); return; }
-  refRegistros.remove().then(function(){ showStatus('Registros borrados', false); });
+  if (pwd !== 'Apymsa2026-2') { showStatus('Contrasena incorrecta', true); return; }
+  refRegistros.remove().then(function(){
+    showStatus('Registros borrados', false);
+    selectedIds.clear();
+    updateBulkDeleteBtn();
+  });
 }
 
 function showStatus(msg, err) {
@@ -432,7 +527,7 @@ function addManual() {
   if (!empleado) { empEl.style.borderColor='var(--danger)'; setTimeout(function(){empEl.style.borderColor='var(--border)';},1500); showStatus('Ingresa el numero de empleado',true); return; }
   if (!/^\d{7}$/.test(code)) { codeEl.style.borderColor='var(--danger)'; setTimeout(function(){codeEl.style.borderColor='var(--border)';},1500); showStatus('Codigo debe tener 7 digitos',true); return; }
   var now = new Date();
-  mergeRecord(code, qty, now.toLocaleDateString('es-MX'), now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}), '', empleado);
+  mergeRecord(code, qty, fmtFecha(now), now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}), '', empleado);
   showStatus(code + ' — ' + qty + ' pz agregado', false);
   codeEl.value = ''; qtyEl.value = ''; codeEl.focus();
 }
@@ -444,7 +539,7 @@ function extractAndAdd() {
   if (!empleado) { empEl.style.borderColor='var(--danger)'; setTimeout(function(){empEl.style.borderColor='var(--border)';},1500); showStatus('Ingresa el numero de empleado',true); return; }
   if (!text) { showStatus('Pega un mensaje de texto', true); return; }
   var now = new Date();
-  var fecha = now.toLocaleDateString('es-MX');
+  var fecha = fmtFecha(now);
   var hora = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
   setLoading(true, 'Extrayendo...');
   var items = parseText(text);
@@ -467,7 +562,7 @@ function exportExcel() {
   var ws = XLSX.utils.json_to_sheet(detail);
   ws['!cols'] = [{wch:5},{wch:14},{wch:12},{wch:8},{wch:12},{wch:13},{wch:35}];
   XLSX.utils.book_append_sheet(wb, ws, 'Ventas Negadas');
-  XLSX.writeFile(wb, 'ventas_negadas_' + new Date().toLocaleDateString('es-MX').replace(/\//g,'-') + '.xlsx');
+  XLSX.writeFile(wb, 'ventas_negadas_' + fmtFecha(new Date()).replace(/\//g,'-') + '.xlsx');
   showStatus('Excel descargado', false);
 }
 
@@ -533,23 +628,80 @@ document.addEventListener('click', function(e) {
 });
 
 // Dashboard
+// Aplica todos los filtros activos EXCEPTO el indicado en "exclude".
+// Sirve para calcular, para cada select, solo las opciones validas dado el resto de filtros.
+function getFilteredData(exclude) {
+  var fec   = document.getElementById('f-fecha').value;
+  var mes   = document.getElementById('f-mes').value;
+  var anio  = document.getElementById('f-anio').value;
+  var prod  = ssValues['ss-producto'] || '';
+  var colab = ssValues['ss-colaborador'] || '';
+  var data = records.map(enrich);
+  if (exclude !== 'fecha'       && fec)   data = data.filter(function(r){ return r.fecha === fec; });
+  if (exclude !== 'mes'         && mes)   data = data.filter(function(r){ var pf = parseFechaParts(r.fecha); return pf && String(pf.m) === mes; });
+  if (exclude !== 'anio'        && anio)  data = data.filter(function(r){ var pf = parseFechaParts(r.fecha); return pf && String(pf.y) === anio; });
+  if (exclude !== 'producto'    && prod)  data = data.filter(function(r){ return r.code === prod; });
+  if (exclude !== 'colaborador' && colab) data = data.filter(function(r){ return r.empleado === colab; });
+  return data;
+}
+
 function populateFilters() {
-  var fechas = [...new Set(records.map(function(r){ return r.fecha; }).filter(Boolean))].sort().reverse();
+  // Fecha exacta: solo fechas presentes dado el resto de filtros activos
+  var baseFecha = getFilteredData('fecha');
+  var fechas = [...new Set(baseFecha.map(function(r){ return r.fecha; }).filter(Boolean))];
+  fechas.sort(function(a,b){
+    var pa = parseFechaParts(a), pb = parseFechaParts(b);
+    var da = pa ? new Date(pa.y, pa.m-1, pa.d) : new Date(0);
+    var db = pb ? new Date(pb.y, pb.m-1, pb.d) : new Date(0);
+    return db - da;
+  });
   var selF = document.getElementById('f-fecha');
   var curF = selF.value;
   while (selF.options.length > 1) selF.remove(1);
   fechas.forEach(function(v){ selF.add(new Option(v,v)); });
-  if (fechas.includes(curF)) selF.value = curF;
+  selF.value = fechas.includes(curF) ? curF : '';
 
-  var prods = [...new Set(records.map(function(r){ return r.code; }).filter(Boolean))].sort();
+  // Mes: solo meses presentes dado el resto de filtros activos
+  var baseMes = getFilteredData('mes');
+  var partsMes = baseMes.map(function(r){ return parseFechaParts(r.fecha); }).filter(Boolean);
+  var mesesPresentes = [...new Set(partsMes.map(function(p){ return p.m; }))].sort(function(a,b){ return a-b; });
+  var selM = document.getElementById('f-mes');
+  var curM = selM.value;
+  while (selM.options.length > 1) selM.remove(1);
+  mesesPresentes.forEach(function(m){ selM.add(new Option(MESES_NOMBRES[m-1], m)); });
+  selM.value = mesesPresentes.map(String).includes(curM) ? curM : '';
+
+  // Año: solo anios presentes dado el resto de filtros activos
+  var baseAnio = getFilteredData('anio');
+  var partsAnio = baseAnio.map(function(r){ return parseFechaParts(r.fecha); }).filter(Boolean);
+  var aniosPresentes = [...new Set(partsAnio.map(function(p){ return p.y; }))].sort(function(a,b){ return b-a; });
+  var selY = document.getElementById('f-anio');
+  var curY = selY.value;
+  while (selY.options.length > 1) selY.remove(1);
+  aniosPresentes.forEach(function(y){ selY.add(new Option(y, y)); });
+  selY.value = aniosPresentes.map(String).includes(curY) ? curY : '';
+
+  // Producto: solo productos presentes dado el resto de filtros activos
+  var baseProd = getFilteredData('producto');
+  var prods = [...new Set(baseProd.map(function(r){ return r.code; }).filter(Boolean))].sort();
   ssAllOptions['ss-producto'] = prods.map(function(v){ return {value:v, label:v}; });
+  if (ssValues['ss-producto'] && prods.indexOf(ssValues['ss-producto']) === -1) {
+    ssValues['ss-producto'] = '';
+    document.getElementById('ss-producto-display').textContent = 'Todos los productos';
+  }
   renderSsOptions('ss-producto');
 
-  var colabs = [...new Set(records.map(function(r){ return r.empleado; }).filter(Boolean))].sort(function(a,b){
+  // Colaborador: solo colaboradores presentes dado el resto de filtros activos
+  var baseColab = getFilteredData('colaborador');
+  var colabs = [...new Set(baseColab.map(function(r){ return r.empleado; }).filter(Boolean))].sort(function(a,b){
     var na = (CATALOG[a] && CATALOG[a].n) || a;
     var nb = (CATALOG[b] && CATALOG[b].n) || b;
     return na.localeCompare(nb);
   });
+  if (ssValues['ss-colaborador'] && colabs.indexOf(ssValues['ss-colaborador']) === -1) {
+    ssValues['ss-colaborador'] = '';
+    document.getElementById('ss-colaborador-display').textContent = 'Todos los colaboradores';
+  }
   ssAllOptions['ss-colaborador'] = colabs.map(function(v){
     var nombre = (CATALOG[v] && CATALOG[v].n) || ('Emp. ' + v);
     return {value:v, label: nombre + ' (' + v + ')'};
@@ -558,20 +710,17 @@ function populateFilters() {
 }
 
 function applyFilters() {
-  var fec = document.getElementById('f-fecha').value;
-  var data = records.map(enrich);
-  var prod  = ssValues['ss-producto'] || '';
-  var colab = ssValues['ss-colaborador'] || '';
-  if (fec)   data = data.filter(function(r){ return r.fecha === fec; });
-  if (prod)  data = data.filter(function(r){ return r.code === prod; });
-  if (colab) data = data.filter(function(r){ return r.empleado === colab; });
+  populateFilters(); // recalcula opciones de cada filtro segun los demas (cascada)
+  var data = getFilteredData(null); // null = aplica TODOS los filtros activos
   renderDash(data);
 }
 
 function resetFilters() {
   document.getElementById('f-fecha').value = '';
-  ssValues['ss-producto']=''; document.getElementById('ss-producto-display').textContent='Todos los productos'; renderSsOptions('ss-producto');
-  ssValues['ss-colaborador']=''; document.getElementById('ss-colaborador-display').textContent='Todos los colaboradores'; renderSsOptions('ss-colaborador');
+  document.getElementById('f-mes').value = '';
+  document.getElementById('f-anio').value = '';
+  ssValues['ss-producto']=''; document.getElementById('ss-producto-display').textContent='Todos los productos';
+  ssValues['ss-colaborador']=''; document.getElementById('ss-colaborador-display').textContent='Todos los colaboradores';
   applyFilters();
 }
 
@@ -614,10 +763,10 @@ function renderDash(data) {
 
   var byFecha = countBy(data, 'fecha');
   var fechaE = Object.entries(byFecha).sort(function(a,b){
-    // Parse d/m/yyyy format for correct chronological sort
+    // Parse d/m/aa format for correct chronological sort
     function toDate(s) {
-      var p = s.split('/');
-      return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]) : new Date(0);
+      var pf = parseFechaParts(s);
+      return pf ? new Date(pf.y, pf.m-1, pf.d) : new Date(0);
     }
     return toDate(a[0]) - toDate(b[0]);
   });
